@@ -1,5 +1,11 @@
 # Entscheidungen – Notenbuch
 
+## 2026-11-14 – Namensliste für die Tafel (Etappe 2)
+- **Eigene Liste statt Zugriff aufs Notenbuch:** Die Tafel soll nie Noten sehen; sie bekommt nur, was sie für Zufall und Gruppen braucht.
+- **Gleiches Passwort, eigenes Salz:** ein Passwort für die Lehrkraft, aber ein anderer Schlüssel. Wer die Namensliste entschlüsselt, kann damit das Notenbuch nicht öffnen. Das Salz liegt im (verschlüsselten) Notenbuch, damit alle Geräte dasselbe verwenden und die Tafel nicht immer wieder nach dem Passwort fragt.
+- **Immer ganz neu gebildet, neuester Stand gewinnt:** Die Liste wird aus dem Notenbuch abgeleitet, daher keine Rückfrage bei gleichzeitigem Speichern.
+- **Standard: freigegeben**, abschaltbar unter Mehr → Daten (dann wird sie auf dem Server gelöscht).
+
 ## 2026-11-14 – Umzug vom Claude-Artefakt auf die Plattform (Etappe 1)
 - **Warum:** Die Tafel (Lehrraum) soll die Klassen und Namen aus dem Notenbuch automatisch bekommen. Ein Artefakt auf claude.ai und eine Seite auf kt-gymbruvi.github.io können ihre Speicher nicht gegenseitig lesen. Entschieden von der Lehrkraft am 14.11.2026, mit demselben Passwort für Notenbuch und Namen.
 - **Eigenes Repo `Notenbuch`**, reines HTML ohne Build – so bleibt die Einzeldatei des Artefakts erhalten und lässt sich weiter pflegen.

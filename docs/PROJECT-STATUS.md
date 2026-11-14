@@ -1,8 +1,16 @@
 # Projektstand – Notenbuch
 
-Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) gebaut, noch nicht veröffentlicht.**
+Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unter https://kt-gymbruvi.github.io/Notenbuch/.
+Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
+Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
-## Implementiert
+## Etappe 2 – Namensliste für die Tafel (gebaut 14.11.2026)
+- Nach jedem erfolgreichen Abgleich legt das Notenbuch zusätzlich eine Namensliste ab (`lr_tresore`, Art `namen`): Lerngruppe (Name, Fach, Stufe, Schuljahr, Halbjahr, archiviert) und je Person Kennung, Vor- und Nachname. Keine Noten, Fehlzeiten, Notizen, NTA, Geburtsjahr, Geschlecht.
+- Eigener Schlüssel aus demselben Passwort (Salz `S.namenSalt`, mit dem Notenbuch auf alle Geräte übertragen). Nach Passwortänderung neu verschlüsselt.
+- Schalter unter Mehr → Daten „Lerngruppen und Namen für die Tafel freigeben“ (an). Aus = Liste wird auf dem Server gelöscht.
+- Geprüft mit nachgebautem Server: Ablegen, Nachtrag einer neuen Lerngruppe, Aus/An, Passwortänderung, Sperren vergisst den Schlüssel, Inhalt ohne Noten/Notizen. Mit dem echten Server ungeprüft.
+
+## Implementiert (Etappe 1)
 - Quelltext des Claude-Artefakts „Notenbuch“ (Fassung vom 13.11.2026) übernommen, alle Ansichten unverändert.
 - Abgleich über Supabase (`lr_tresore`, Art `notenbuch`) statt über den Claude-Speicher. Verschlüsselung, Sperre,
   automatische Sicherungen und Konfliktabfrage wie bisher. Änderungen anderer Geräte: alle 30 s und beim Zurückkehren zur Seite.

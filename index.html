@@ -953,6 +953,7 @@ async function pushRemote(force) {
       const meta = { rev, iv: LOCAL.iv, salt: LOCAL.salt, ts: Date.now() };
       LOCAL.baseRev = rev; LOCAL.dirty = false; Sync.remoteMeta = meta; lsSet(LS_KEY, LOCAL);
       Sync.offline = false; setSync('ok');
+      namenAbgleichen();
     } catch (e) {
       console.warn('Abgleich fehlgeschlagen', e);
       Sync.offline = true; setSync('off');
@@ -1012,6 +1013,7 @@ async function onRemoteChange(meta) {
     S = remoteState; ensureCls();
     LOCAL = { ...r.box, salt: r.meta.salt, baseRev: r.meta.rev, dirty: false, ts: Date.now() }; lsSet(LS_KEY, LOCAL);
     setSync('ok'); render(); toast('Von anderem Gerät aktualisiert');
+    namenAbgleichen();
   } catch (e) { setSync('off'); }
   finally { handlingRemote = false; }
 }
@@ -1020,6 +1022,56 @@ function syncHTML() {
   const map = { ok: ['ok', 'Synchronisiert'], busy: ['busy', 'Speichert …'], off: ['off', 'Nicht synchronisiert – wird nachgeholt'], local: ['', 'Nur auf diesem Gerät'] };
   const [c, t] = map[UI.sync] || map.local;
   return `<span id="syncind" class="sync ${c}"><i></i>${t}</span>`;
+}
+// ---------- Namensliste für die Tafel (Lehrraum) ----------
+// Die Tafel bekommt nie das Notenbuch, sondern nur diese Liste: Lerngruppen und Vor-/Nachnamen, keine Noten,
+// Fehlzeiten, Notizen, Nachteilsausgleiche, Geburtsjahre oder Geschlecht. Verschlüsselt mit einem eigenen Schlüssel
+// aus demselben Passwort (eigenes Salz S.namenSalt, auf allen Geräten gleich), abgelegt in lr_tresore, Art „namen“.
+const NAMEN = { key: null, salt: null, letzter: null, laeuft: null, nochmal: false };
+const namenFreigegeben = () => !(S && S.settings && S.settings.namenTafel === false);
+async function namenSchluessel(pw) {
+  try {
+    if (!S || !pw) return;
+    if (!S.namenSalt) { S.namenSalt = C.newSalt(); save(); }
+    NAMEN.salt = S.namenSalt; NAMEN.key = await C.deriveKey(pw, NAMEN.salt); NAMEN.letzter = null;
+    namenAbgleichen();
+  } catch (e) { console.warn('Schlüssel für die Namensliste fehlt', e); }
+}
+function namenListe() {
+  return { schema: 'notenbuch/namen', version: 1,
+    klassen: (S.classes || []).map(c => ({ id: c.id, name: c.name || '', fach: subjName(c.subject), stufe: c.level === 'sek2' ? 'Sek II' : 'Sek I',
+      schuljahr: c.year || '', halbjahr: c.term || null, archiviert: !!c.archived,
+      schueler: (c.students || []).map(st => ({ id: st.id, vorname: st.first || '', nachname: st.last || '' })) })) };
+}
+async function namenAbgleichen() {
+  if (!Sync.db || !S || !NAMEN.key) return;
+  if (NAMEN.laeuft) { NAMEN.nochmal = true; return NAMEN.laeuft; }
+  NAMEN.laeuft = (async () => {
+    await null; // erst nach der Zuweisung weiterlaufen – sonst bliebe NAMEN.laeuft bei sofortigem Ende gesetzt
+    try {
+      if (!namenFreigegeben()) {
+        if (NAMEN.letzter !== 'aus') { const { error } = await Sync.db.from('lr_tresore').delete().eq('art', 'namen'); if (error) throw serverFehler(error); NAMEN.letzter = 'aus'; }
+        return;
+      }
+      const liste = namenListe(), json = JSON.stringify(liste);
+      if (json === NAMEN.letzter) return;
+      const box = await C.encryptJSON(NAMEN.key, liste);
+      // Die Liste wird immer ganz aus dem Notenbuch neu gebildet – bei gleichzeitigem Speichern gewinnt der neueste Stand
+      for (let versuch = 0; versuch < 3; versuch++) {
+        const { data, error } = await Sync.db.from('lr_tresore').select('rev').eq('art', 'namen').maybeSingle();
+        if (error) throw serverFehler(error);
+        const antwort = await Sync.db.rpc('lr_tresor_speichern', { p_art: 'namen', p_rev_erwartet: data ? data.rev : 0, p_salt: NAMEN.salt, p_iv: box.iv, p_daten: box.ct });
+        if (!antwort.error) { NAMEN.letzter = json; return; }
+        if (!/konflikt/.test(antwort.error.message || '')) throw serverFehler(antwort.error);
+      }
+    } catch (e) { console.warn('Namensliste für die Tafel nicht abgeglichen', e); }
+    finally { NAMEN.laeuft = null; if (NAMEN.nochmal) { NAMEN.nochmal = false; namenAbgleichen(); } }
+  })();
+  return NAMEN.laeuft;
+}
+function namenHTML() {
+  return `<label class="row small" style="gap:10px;align-items:flex-start;flex-wrap:nowrap;cursor:pointer"><input type="checkbox" data-c="namentafel" ${namenFreigegeben() ? 'checked' : ''} style="width:22px;height:22px;margin-top:2px;flex:none">
+    <span><b>Lerngruppen und Namen für die Tafel freigeben</b><br><span class="muted">Die Tafel (Lehrraum) bekommt nur den Namen der Lerngruppe, Fach, Schuljahr und die Vor- und Nachnamen – keine Noten, Fehlzeiten oder Notizen. Auch das ist mit deinem Notenbuch-Passwort verschlüsselt; die Tafel fragt einmal je Gerät danach.${Sync.db ? '' : ' Wirkt erst mit Anmeldung.'}</span></span></label>`;
 }
 // Anmeldung (Lehrkraft-Konto) – getrennt vom Notenbuch-Passwort
 function anmeldeHTML() {
@@ -1092,6 +1144,7 @@ setInterval(() => {
 async function lock(skipSave) {
   if (S && !skipSave) await doSave();
   S = null; KEY = null; UI.modal = null; UI.measure = {};
+  NAMEN.key = null; NAMEN.salt = null; NAMEN.letzter = null;
   if (Sync.unsub) { try { Sync.unsub(); } catch (e) {} Sync.unsub = null; }
   renderLock();
 }
@@ -1135,6 +1188,7 @@ async function doSetup() {
   S = emptyState(); UI.lockMsg = '';
   LOCAL = null; await doSave(); if (Sync.db) await pushRemote(true);
   subscribeRemote(); render();
+  namenSchluessel(a);
 }
 let unlockSrcP = null, unlockBusy = false, autoTimer = null, unlockAt = 0, unlockWant = false;
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
@@ -1183,6 +1237,7 @@ async function doUnlock(silent) {
     } catch (pe) { console.error(pe); UI.postUnlockErr = String((pe && pe.stack) || pe); }
     try { subscribeRemote(); if (LOCAL && LOCAL.dirty && Sync.db) pushRemote(); setSync(Sync.db ? 'ok' : 'local'); } catch (se) { console.error(se); }
     render();
+    namenSchluessel(pw);
     if (UI.postUnlockErr) { toast('Entsperrt, aber beim Vorbereiten trat ein Fehler auf – bitte Screenshot unter Mehr'); }
   } catch (e) {
     const m0 = e && e.message;
@@ -2084,6 +2139,7 @@ function dataHTML(c) {
     <div class="spread"><b>Synchronisation</b>${syncHTML().replace('id="syncind"', '')}</div>
     <p class="small muted">${Sync.db ? 'Die Daten werden auf diesem Gerät mit deinem Passwort verschlüsselt (AES-256) und nur verschlüsselt über die Datenbank der Plattform (Supabase, Frankfurt) abgeglichen. Auf dem zweiten Gerät mit demselben Lehrkraft-Konto anmelden und mit demselben Passwort entsperren.' : 'Ohne Anmeldung bleiben die Daten verschlüsselt auf diesem Gerät.'}</p>
     ${anmeldeHTML()}
+    ${namenHTML()}
     ${lsGet('nb_conflict_backup') ? '<p class="small">Eine Sicherung aus einem Sync-Konflikt liegt vor. <button class="btn sm" data-a="conflictdl">Als Backup speichern</button></p>' : ''}
   </div>
   <h2>Automatische Sicherungen</h2><div class="card stack">${snapsHTML()}</div>
@@ -2791,6 +2847,7 @@ const A = {
     if (a.length < 8) return toast('Mindestens 8 Zeichen'); if (a !== b) return toast('Neue Passwörter stimmen nicht überein');
     SALT = C.newSalt(); KEY = await C.deriveKey(a, SALT); UI.modal = null;
     await doSave(); if (Sync.db) await pushRemote(true); render(); toast('Passwort geändert');
+    namenSchluessel(a);
   }
 };
 const safeName = s => String(s).replace(/[^\p{L}\d\-_]+/gu, '-').replace(/^-|-$/g, '') || 'lerngruppe';
@@ -2853,7 +2910,9 @@ const CH = {
     S = state; UI.lockMsg = ''; LOCAL = null; ensureCls();
     await doSave(); if (Sync.db) await pushRemote(true);
     subscribeRemote(); render(); toast('Backup übernommen');
+    namenSchluessel(pw);
   },
+  namentafel: el => { S.settings.namenTafel = el.checked; save(); NAMEN.letzter = null; namenAbgleichen(); toast(el.checked ? 'Namen für die Tafel freigegeben' : 'Namen für die Tafel entfernt'); },
   restore: async el => {
     const f = el.files[0]; if (!f) return; el.value = '';
     let b; try { b = JSON.parse(await f.text()); if (b.app !== 'notenbuch') throw 0; } catch (e) { return toast('Keine gültige Notenbuch-Sicherung'); }
