@@ -21,6 +21,7 @@ Stand: `docs/PROJECT-STATUS.md`, Entscheidungen: `docs/DECISIONS.md`. Gesamtplan
   `lr_tresor_speichern` mit erwarteter Fassung (`rev`). Migration `../Quizzo/supabase/migrations/011_tresore.sql`.
   Nie Klartext an den Server, nie das Passwort speichern, nur der öffentliche publishable-Schlüssel.
 - Anmeldung mit dem gemeinsamen Lehrkraft-Konto (supabase-js, gleicher Speicherort wie Quizzo und Tafel). Ohne Anmeldung arbeitet das Notenbuch nur lokal.
+- **Schlüsselbund** (seit Etappe B der Tafel-SPEC, `../Lehrraum/docs/SPEC-tafeln-abgleich-pdf-tabelle.md`): IndexedDB `lehrraum-schluessel`, gemeinsam mit Tafel und Startseite. Darin nur das Passwort als nicht exportierbarer PBKDF2-Grundschlüssel; liegt er vor, öffnet das Notenbuch ohne Sperrbildschirm. Nur mit Anmeldung; Abmelden (irgendwo), „Auf diesem Gerät sperren“ und ein auf einem anderen Gerät geändertes Passwort löschen ihn. Keine Zeitsperre mehr (`settings.autolock` bleibt im Tresor, wird nicht benutzt).
 - Keine KI-Aufrufe, keine Tracker. Texterkennung (Foto) und PDF-Auslesen laufen auf dem Gerät.
 - Format des Tresors nicht stillschweigend ändern: Ältere Geräte und Backups müssen lesbar bleiben.
 

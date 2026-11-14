@@ -803,6 +803,12 @@ const Core = (() => {
     const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: unb64(saltB64), iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   }
+  // Grundschlüssel aus dem Passwort (nicht exportierbar) – liegt im gemeinsamen Schlüsselbund; ableiten() ergibt
+  // für jedes Salz denselben Schlüssel wie deriveKey(passwort, salz).
+  function basisAus(password) { return crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']); }
+  function ableiten(basis, saltB64, iter = ITER) {
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: unb64(saltB64), iterations: iter, hash: 'SHA-256' }, basis, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
   function newSalt() { return b64(crypto.getRandomValues(new Uint8Array(16))); }
   async function encryptJSON(key, obj) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -819,7 +825,7 @@ const Core = (() => {
     DEFAULT_KEY_SEK1, DEFAULT_KEY_SEK2, examPoints, distribution,
     parseMeasure, fmtMeasure, rowsForScheme, ageInYear, findTableColumn, evalTable, extractNumbers, parseTableText,
     splitName, parseNameList, sortStudents, collator,
-    deriveKey, newSalt, encryptJSON, decryptJSON, chunk, ITER };
+    deriveKey, basisAus, ableiten, newSalt, encryptJSON, decryptJSON, chunk, ITER };
 })();
 
 
@@ -877,6 +883,21 @@ const lsGet = k => { try { const v = localStorage.getItem(k); return v ? JSON.pa
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
 let LOCAL = lsGet(LS_KEY);   // {salt, iv, ct, baseRev, dirty, ts}
 
+// ---------- Schlüsselbund (gemeinsam mit Tafel und Startseite) ----------
+// IndexedDB „lehrraum-schluessel“, Lager „bund“, Eintrag „bund“: { version: 1, basis: CryptoKey, am }. `basis` ist das
+// Notenbuch-Passwort als nicht exportierbarer PBKDF2-Schlüssel – das Passwort selbst wird nie gespeichert. Ist er da,
+// öffnet das Notenbuch ohne Rückfrage. Nur mit Anmeldung (Lehrkraft-Konto); Abmelden – hier oder in einer anderen
+// Anwendung der Plattform – und „Auf diesem Gerät sperren“ löschen ihn. Gleiches Format in Lehrraum und Startseite.
+const GEMEINSAM = 'sb-ifdqfndsvgiyvxvxtoga-auth-token';   // Anmeldung, gemeinsam mit Quizzo, Klassenfunk, Tafel, Startseite
+const sitzungDa = () => { try { return localStorage.getItem(GEMEINSAM) !== null; } catch (e) { return true; } };
+const BUND = {
+  oeffne() { return new Promise((res, rej) => { const r = indexedDB.open('lehrraum-schluessel', 1); r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('bund')) r.result.createObjectStore('bund'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('blockiert')); }); },
+  async tx(mode, fn) { const db = await this.oeffne(); try { return await new Promise((res, rej) => { const t = db.transaction('bund', mode); const out = fn(t.objectStore('bund')); t.oncomplete = () => res(out && 'result' in out ? out.result : undefined); t.onerror = () => rej(t.error); }); } finally { db.close(); } },
+  async laden() { try { const b = await this.tx('readonly', st => st.get('bund')); return b && b.version === 1 && b.basis instanceof CryptoKey ? b : null; } catch (e) { return null; } },
+  async merken(basis) { if (!sitzungDa()) return; try { await this.tx('readwrite', st => st.put({ version: 1, basis, am: new Date().toISOString() }, 'bund')); } catch (e) { console.warn('Schlüsselbund nicht gespeichert', e); } },
+  async loeschen() { try { await this.tx('readwrite', st => st.delete('bund')); } catch (e) {} }
+};
+
 // ---------- Sync (verschlüsselt, Ende-zu-Ende) über die Plattform-Datenbank ----------
 // Supabase (Frankfurt), Tabelle lr_tresore, Art „notenbuch“: eine Zeile je Lehrkraft mit den verschlüsselten Daten.
 // Angemeldet wird mit dem gemeinsamen Lehrkraft-Konto (wie Quizzo, Klassenfunk, Tafel und Startseite).
@@ -890,6 +911,7 @@ function sb() {
     sbClient = window.supabase.createClient(SERVER.url, SERVER.schluessel, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
     sbClient.auth.onAuthStateChange((ev, session) => {
       if (ev === 'SIGNED_OUT' || !session) { Sync.db = null; Sync.uid = null; Sync.email = ''; setSync('local'); }
+      if (ev === 'SIGNED_OUT') { BUND.loeschen(); if (S && !Sync.abmeldenHier) lock(); }
     });
   }
   return sbClient;
@@ -924,7 +946,10 @@ async function syncAnmelden(email, passwort) {
 }
 async function syncAbmelden() {
   if (Sync.unsub) { try { Sync.unsub(); } catch (e) {} Sync.unsub = null; }
+  Sync.abmeldenHier = true;
   try { await sb().auth.signOut({ scope: 'local' }); } catch (e) {}
+  Sync.abmeldenHier = false;
+  await BUND.loeschen();
   Sync.db = null; Sync.uid = null; Sync.email = ''; Sync.remoteMeta = null; setSync('local');
 }
 async function pullRemote() {
@@ -998,6 +1023,7 @@ async function onRemoteChange(meta) {
       if (LOCAL && LOCAL.ct) SNAP.add(LOCAL, 'Vor Passwort-Übernahme vom anderen Gerät');
       if (LOCAL && LOCAL.dirty) lsSet('nb_conflict_backup', { iv: LOCAL.iv, ct: LOCAL.ct, salt: LOCAL.salt, ts: Date.now() });
       LOCAL = { ...r.box, salt: r.meta.salt, baseRev: r.meta.rev, dirty: false, ts: Date.now() }; lsSet(LS_KEY, LOCAL);
+      await BUND.loeschen(); UI.bund = null;
       lock(true); return;
     }
     if (LOCAL && LOCAL.dirty) {
@@ -1029,12 +1055,12 @@ function syncHTML() {
 // aus demselben Passwort (eigenes Salz S.namenSalt, auf allen Geräten gleich), abgelegt in lr_tresore, Art „namen“.
 const NAMEN = { key: null, salt: null, letzter: null, laeuft: null, nochmal: false };
 const namenFreigegeben = () => !(S && S.settings && S.settings.namenTafel === false);
-async function namenSchluessel(pw) {
+async function namenSchluessel(basis) {
   try {
-    if (!S || !pw) return;
+    if (!S || !basis) return;
     if (!S.namenSalt) { S.namenSalt = C.newSalt(); save(); }
-    NAMEN.salt = S.namenSalt; NAMEN.key = await C.deriveKey(pw, NAMEN.salt); NAMEN.letzter = null;
-    namenAbgleichen();
+    NAMEN.salt = S.namenSalt; NAMEN.key = await C.ableiten(basis, NAMEN.salt); NAMEN.letzter = null;
+    await namenAbgleichen();
   } catch (e) { console.warn('Schlüssel für die Namensliste fehlt', e); }
 }
 function namenListe() {
@@ -1071,7 +1097,7 @@ async function namenAbgleichen() {
 }
 function namenHTML() {
   return `<label class="row small" style="gap:10px;align-items:flex-start;flex-wrap:nowrap;cursor:pointer"><input type="checkbox" data-c="namentafel" ${namenFreigegeben() ? 'checked' : ''} style="width:22px;height:22px;margin-top:2px;flex:none">
-    <span><b>Lerngruppen und Namen für die Tafel freigeben</b><br><span class="muted">Die Tafel (Lehrraum) bekommt nur den Namen der Lerngruppe, Fach, Schuljahr und die Vor- und Nachnamen – keine Noten, Fehlzeiten oder Notizen. Auch das ist mit deinem Notenbuch-Passwort verschlüsselt; die Tafel fragt einmal je Gerät danach.${Sync.db ? '' : ' Wirkt erst mit Anmeldung.'}</span></span></label>`;
+    <span><b>Lerngruppen und Namen für die Tafel freigeben</b><br><span class="muted">Die Tafel (Lehrraum) bekommt nur den Namen der Lerngruppe, Fach, Schuljahr und die Vor- und Nachnamen – keine Noten, Fehlzeiten oder Notizen. Auch das ist mit deinem Notenbuch-Passwort verschlüsselt; es gilt – einmal je Gerät eingegeben – auch für Tafel und Startseite.${Sync.db ? '' : ' Wirkt erst mit Anmeldung.'}</span></span></label>`;
 }
 // Anmeldung (Lehrkraft-Konto) – getrennt vom Notenbuch-Passwort
 function anmeldeHTML() {
@@ -1134,13 +1160,11 @@ setInterval(() => { if (S && LOCAL && LOCAL.dirty && Sync.db && !Sync.pushing) p
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) doSave(); });
 
 // ---------- Sperre ----------
-let lastActive = Date.now();
-['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { lastActive = Date.now(); }, true));
-setInterval(() => {
-  if (!S) return;
-  const mins = (S.settings && S.settings.autolock) || 5;
-  if (mins > 0 && Date.now() - lastActive > mins * 60000) lock();
-}, 20000);
+// Keine Zeitsperre mehr (seit dem gemeinsamen Schlüsselbund): Gesperrt wird mit „Auf diesem Gerät sperren“ oder durch Abmelden.
+// Die Einstellung settings.autolock bleibt im Tresor stehen (älteres Format), wird aber nicht mehr benutzt.
+async function sperreGeraet() { await BUND.loeschen(); UI.bund = null; await lock(); }
+// Abmelden in einem anderen Tab (z. B. auf der Startseite) entfernt die gemeinsame Anmeldung: dann auch hier sperren
+window.addEventListener('storage', e => { if (e.key === GEMEINSAM && e.newValue === null) { BUND.loeschen(); UI.bund = null; if (S) lock(); } });
 async function lock(skipSave) {
   if (S && !skipSave) await doSave();
   S = null; KEY = null; UI.modal = null; UI.measure = {};
@@ -1153,13 +1177,16 @@ function vaultExists() { return !!(LOCAL || Sync.remoteMeta); }
 function renderLock(state) {
   unlockSrcP = null;
   const setup = !vaultExists();
-  const waiting = !Sync.ready && !LOCAL;
+  const waiting = (!Sync.ready && !LOCAL) || UI.bundOeffnet;
   document.getElementById('app').innerHTML = `
   <div class="lock"><div class="card stack">
     <a class="heim" href="https://kt-gymbruvi.github.io/">← Lehrraum</a>
     <div class="mark"><span>N</span><div><b style="font-size:22px">Notenbuch</b><div class="muted small">Leistungen dokumentieren</div></div></div>
     ${UI.lockMsg ? `<div class="hint">${esc(UI.lockMsg)}</div>` : ''}
-    ${waiting ? `<p class="muted">Suche nach gespeicherten Daten …</p>` : setup ? `
+    ${waiting ? `<p class="muted">${UI.bundOeffnet ? 'Wird geöffnet …' : 'Suche nach gespeicherten Daten …'}</p>` : setup && UI.bund ? `
+      <p>Das Passwort für Klassen und Namen hast du schon in der Tafel festgelegt. Es gilt auch für das Notenbuch – alle Daten werden damit auf deinem Gerät verschlüsselt.</p>
+      <div class="warnbox small">Ohne dieses Passwort lassen sich die Daten nicht wiederherstellen. Es gibt keine Passwort-Zurücksetzung.</div>
+      <button class="btn primary" data-a="setupbund" style="width:100%">Notenbuch anlegen</button>` : setup ? `
       <p>Lege ein Passwort fest. Alle Daten werden damit auf deinem Gerät verschlüsselt, bevor sie gespeichert oder synchronisiert werden.</p>
       <div class="warnbox small">Ohne dieses Passwort lassen sich die Daten nicht wiederherstellen. Es gibt keine Passwort-Zurücksetzung.</div>
       <div><label class="f" for="pw1">Passwort (mind. 8 Zeichen)</label><input class="in" id="pw1" type="password" autocomplete="new-password"></div>
@@ -1184,11 +1211,17 @@ async function doSetup() {
   const a = $('#pw1').value, b = $('#pw2').value;
   if (a.length < 8) return toast('Mindestens 8 Zeichen');
   if (a !== b) return toast('Passwörter stimmen nicht überein');
-  SALT = C.newSalt(); KEY = await C.deriveKey(a, SALT);
+  await legeAn(await C.basisAus(a));
+}
+// Noch kein Notenbuch, aber das Passwort liegt schon im Schlüsselbund (in der Tafel festgelegt): übernehmen
+async function doSetupBund() { const bund = UI.bund || await BUND.laden(); if (!bund) return renderLock(); await legeAn(bund.basis); }
+async function legeAn(basis) {
+  SALT = C.newSalt(); KEY = await C.ableiten(basis, SALT);
   S = emptyState(); UI.lockMsg = '';
   LOCAL = null; await doSave(); if (Sync.db) await pushRemote(true);
   subscribeRemote(); render();
-  namenSchluessel(a);
+  await BUND.merken(basis);
+  namenSchluessel(basis);
 }
 let unlockSrcP = null, unlockBusy = false, autoTimer = null, unlockAt = 0, unlockWant = false;
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
@@ -1221,24 +1254,15 @@ async function doUnlock(silent) {
   unlockBusy = true; unlockAt = Date.now();
   try {
     const src = await getUnlockSrc();
-    const key = await C.deriveKey(pw, src.salt);
+    const basis = await C.basisAus(pw);
+    const key = await C.ableiten(basis, src.salt);
     if (!$('#pw') || $('#pw').value !== pw) return;          // inzwischen weitergetippt
     let state;
     try { state = await C.decryptJSON(key, src); }
     catch (de) { const e2 = new Error('decrypt'); throw e2; }
-    KEY = key; SALT = src.salt; S = state; UI.lockMsg = ''; unlockSrcP = null;
-    const fromLocal = src === LOCAL;
-    // Ab hier ist das Passwort richtig: Folgefehler dürfen nicht als „Passwort falsch“ erscheinen
-    try {
-      if (src !== LOCAL && LOCAL && LOCAL.ct) SNAP.add(LOCAL, 'Vor Laden des neueren Stands vom Server');
-      if (src !== LOCAL) { LOCAL = { ...src, ts: Date.now() }; lsSet(LS_KEY, LOCAL); }
-      dailySnap(LOCAL, 'Stand beim Öffnen');
-      ensureCls();
-    } catch (pe) { console.error(pe); UI.postUnlockErr = String((pe && pe.stack) || pe); }
-    try { subscribeRemote(); if (LOCAL && LOCAL.dirty && Sync.db) pushRemote(); setSync(Sync.db ? 'ok' : 'local'); } catch (se) { console.error(se); }
-    render();
-    namenSchluessel(pw);
-    if (UI.postUnlockErr) { toast('Entsperrt, aber beim Vorbereiten trat ein Fehler auf – bitte Screenshot unter Mehr'); }
+    if (S) return;
+    oeffneMit(key, src, state, basis);
+    BUND.merken(basis);
   } catch (e) {
     const m0 = e && e.message;
     const msg = m0 === 'timeout' || m0 === 'none' ? 'Keine Verbindung zu den Daten. Netz prüfen und erneut auf Entsperren tippen.'
@@ -1252,6 +1276,34 @@ async function doUnlock(silent) {
     // Falls während der Prüfung weitergetippt wurde: erneut still prüfen
     if (!S && $('#pw') && $('#pw').value && $('#pw').value !== pw) scheduleAutoUnlock();
   }
+}
+// Ab hier ist das Passwort (bzw. der Bund) richtig: Folgefehler dürfen nicht als „Passwort falsch“ erscheinen
+function oeffneMit(key, src, state, basis) {
+  KEY = key; SALT = src.salt; S = state; UI.lockMsg = ''; unlockSrcP = null;
+  try {
+    if (src !== LOCAL && LOCAL && LOCAL.ct) SNAP.add(LOCAL, 'Vor Laden des neueren Stands vom Server');
+    if (src !== LOCAL) { LOCAL = { ...src, ts: Date.now() }; lsSet(LS_KEY, LOCAL); }
+    dailySnap(LOCAL, 'Stand beim Öffnen');
+    ensureCls();
+  } catch (pe) { console.error(pe); UI.postUnlockErr = String((pe && pe.stack) || pe); }
+  try { subscribeRemote(); if (LOCAL && LOCAL.dirty && Sync.db) pushRemote(); setSync(Sync.db ? 'ok' : 'local'); } catch (se) { console.error(se); }
+  render();
+  namenSchluessel(basis);
+  if (UI.postUnlockErr) { toast('Entsperrt, aber beim Vorbereiten trat ein Fehler auf – bitte Screenshot unter Mehr'); }
+}
+// Beim Start: liegt der Schlüsselbund vor (Passwort schon in Tafel, Startseite oder hier eingegeben), ohne Rückfrage öffnen
+async function oeffneMitBund() {
+  const bund = UI.bund; if (!bund || S) return false;
+  try {
+    const src = await getUnlockSrc();
+    const key = await C.ableiten(bund.basis, src.salt);
+    let state;
+    try { state = await C.decryptJSON(key, src); }
+    catch (e) { await BUND.loeschen(); UI.bund = null; UI.lockMsg = 'Das Passwort wurde geändert. Bitte einmal neu eingeben.'; return false; }
+    if (S) return true;
+    oeffneMit(key, src, state, bund.basis);
+    return true;
+  } catch (e) { return false; }   // keine Verbindung o. Ä.: dann das Passwortfeld
 }
 function scheduleAutoUnlock() { clearTimeout(autoTimer); autoTimer = setTimeout(() => doUnlock(true), 350); }
 // Richtiges Passwort öffnet sofort – ohne Klick (auch bei automatisch eingesetztem Passwort)
@@ -1413,7 +1465,7 @@ function renderMain() {
         <small>${c ? `${subjName(c.subject)}, ${c.level === 'sek2' ? 'Sek II' : 'Sek I'}, ${esc(c.year)}, ${c.term}. Hj.` : 'Notenbuch'}</small>
       </button>
       ${syncHTML()}
-      <button class="lockbtn" data-a="lock">Sperren</button>
+      <button class="lockbtn" data-a="lock" title="Auf diesem Gerät sperren – danach wieder mit Passwort">Sperren</button>
     </header>`;
   const nav = `<nav class="nav" aria-label="Bereiche">${tabs.map(([k, t]) => `<button data-a="tab" data-v="${k}" ${curTab === k ? 'aria-current="page"' : ''}>${ICON[k]}<span>${t}</span></button>`).join('')}</nav>`;
   const modal = `<div id="modal">${UI.modal ? modalHTML() : ''}</div>`;
@@ -1888,7 +1940,7 @@ function mehrHTML(c) {
     <button data-a="go" data-v="classes"><span><b>Lerngruppen</b><br><span class="muted small">Anlegen, Schuljahr, neues Halbjahr, Archiv</span></span><span>›</span></button>
     ${c ? `<button data-a="go" data-v="students"><span><b>Schülerliste</b><br><span class="muted small">Importieren per Foto, PDF oder Text, sortieren, Stammdaten</span></span><span>›</span></button>` : ''}
     <button data-a="go" data-v="tables"><span><b>Leistungstabellen Sport</b><br><span class="muted small">${S.tables.length} Tabellen, Import per Foto oder PDF</span></span><span>›</span></button>
-    <button data-a="go" data-v="data"><span><b>Daten und Sicherheit</b><br><span class="muted small">Backup, Export CSV/PDF, Passwort, automatische Sperre</span></span><span>›</span></button>
+    <button data-a="go" data-v="data"><span><b>Daten und Sicherheit</b><br><span class="muted small">Backup, Export CSV/PDF, Passwort, Sperre</span></span><span>›</span></button>
   </div>`;
 }
 const back = `<button class="btn ghost sm" data-a="go" data-v="">‹ Mehr</button>`;
@@ -2154,8 +2206,8 @@ function dataHTML(c) {
   ${c ? `<h2>Export ${esc(c.name)}</h2><div class="card stack"><p class="small">Unverschlüsselte Notenliste – nur auf dienstlich zugelassenen Geräten speichern.</p>
     <div class="row"><button class="btn" data-a="csv">Notenliste als CSV</button><button class="btn" data-a="pdf">Notenliste als PDF</button></div></div>` : ''}
   <h2>Sperre und Passwort</h2><div class="card stack">
-    <div><label class="f">Automatisch sperren nach</label><select class="in" style="width:auto" data-c="autolock">${[2, 5, 10, 20].map(m => `<option value="${m}" ${S.settings.autolock === m ? 'selected' : ''}>${m} Minuten ohne Eingabe</option>`).join('')}</select></div>
-    <div class="row"><button class="btn" data-a="chpw">Passwort ändern</button><button class="btn" data-a="lock">Jetzt sperren</button></div>
+    <p class="small" style="margin:0">${Sync.db ? 'Einmal je Gerät eingegeben, öffnet das Passwort Notenbuch, Tafel und Startseite ohne erneute Rückfrage. Gespeichert wird dafür nur ein nicht auslesbarer Schlüssel auf diesem Gerät, nie das Passwort. „Auf diesem Gerät sperren“ oder Abmelden löscht ihn.' : 'Ohne Anmeldung fragt das Notenbuch bei jedem Öffnen nach dem Passwort.'}</p>
+    <div class="row"><button class="btn" data-a="chpw">Passwort ändern</button><button class="btn" data-a="lock">Auf diesem Gerät sperren</button></div>
   </div>
   <h2>Datenschutz</h2><div class="hint small">Für die Verarbeitung von Schülerdaten auf privaten Geräten brauchst du in Niedersachsen eine Genehmigung der Schulleitung. Prüfe außerdem mit deiner Schule, ob die verschlüsselte Synchronisation über die Plattform-Datenbank (Supabase, Serverstandort Frankfurt; dort liegen nur verschlüsselte Daten) zulässig ist. Texterkennung (Foto) und PDF-Auslesen laufen auf dem Gerät; Bilder und Texte werden nicht hochgeladen.</div>`;
 }
@@ -2444,7 +2496,7 @@ function commit(opts = {}) { save(); if (opts.full !== false) render(); }
 
 const A = {
   // Sperre
-  setup: doSetup, unlock: () => doUnlock(false), lock: () => lock(),
+  setup: doSetup, setupbund: () => doSetupBund(), unlock: () => doUnlock(false), lock: () => sperreGeraet(),
   nbanmelden: async () => {
     const mail = $('#nbmail').value.trim(), pw = $('#nbkonto').value, f = $('#nbanmeldefehler');
     if (!mail || !pw) { if (f) f.textContent = 'Bitte E-Mail und Passwort des Kontos eingeben.'; return; }
@@ -2845,9 +2897,12 @@ const A = {
     const o = $('#pwold').value, a = $('#pwn1').value, b = $('#pwn2').value;
     try { const k = await C.deriveKey(o, SALT); await C.decryptJSON(k, LOCAL); } catch (e) { return toast('Aktuelles Passwort falsch'); }
     if (a.length < 8) return toast('Mindestens 8 Zeichen'); if (a !== b) return toast('Neue Passwörter stimmen nicht überein');
-    SALT = C.newSalt(); KEY = await C.deriveKey(a, SALT); UI.modal = null;
+    const basis = await C.basisAus(a);
+    SALT = C.newSalt(); KEY = await C.ableiten(basis, SALT); UI.modal = null;
     await doSave(); if (Sync.db) await pushRemote(true); render(); toast('Passwort geändert');
-    namenSchluessel(a);
+    // erst die Namensliste neu verschlüsseln, dann den Bund ersetzen – sonst hielte die Tafel ihn für veraltet
+    await namenSchluessel(basis);
+    await BUND.merken(basis);
   }
 };
 const safeName = s => String(s).replace(/[^\p{L}\d\-_]+/gu, '-').replace(/^-|-$/g, '') || 'lerngruppe';
@@ -2871,7 +2926,6 @@ const CH = {
   mvchg: () => { const m = UI.modal; m.date = $('#mvdate').value || m.date; m.from = $('#mvfrom').value; m.to = $('#mvto').value; renderModal(); },
   attdate: el => { UI.attDate = el.value || today(); render(); },
   sort: el => { cls().sort = el.value; commit(); },
-  autolock: el => { S.settings.autolock = +el.value; save(); },
   ovp: el => { const c = cls(); const o = c.overrides[el.dataset.id] = c.overrides[el.dataset.id] || {}; o.p = el.value === '' ? null : +el.value; if (o.p == null && !o.reason) delete c.overrides[el.dataset.id]; save(); render(); },
   ovr: el => { const c = cls(); const o = c.overrides[el.dataset.id] = c.overrides[el.dataset.id] || {}; o.reason = el.value; save(); },
   clssubj: el => { if (!UI.modal.id) { UI.modal.subject = el.value; UI.modal.cats = defaultCats(el.value); keepClsForm(); } },
@@ -2906,11 +2960,13 @@ const CH = {
     let b; try { b = JSON.parse(await f.text()); if (b.app !== 'notenbuch') throw 0; } catch (e) { return toast('Keine gültige Notenbuch-Sicherung'); }
     const pw = await askPassword('Passwort des bisherigen Notenbuchs'); if (!pw) return;
     let state, key; try { key = await C.deriveKey(pw, b.salt, b.iter || C.ITER); state = await C.decryptJSON(key, b); } catch (e) { return toast('Passwort falsch oder Datei beschädigt'); }
-    if (b.iter && b.iter !== C.ITER) { SALT = C.newSalt(); KEY = await C.deriveKey(pw, SALT); } else { SALT = b.salt; KEY = key; }
+    const basis = await C.basisAus(pw);
+    if (b.iter && b.iter !== C.ITER) { SALT = C.newSalt(); KEY = await C.ableiten(basis, SALT); } else { SALT = b.salt; KEY = key; }
     S = state; UI.lockMsg = ''; LOCAL = null; ensureCls();
     await doSave(); if (Sync.db) await pushRemote(true);
     subscribeRemote(); render(); toast('Backup übernommen');
-    namenSchluessel(pw);
+    await BUND.merken(basis);
+    namenSchluessel(basis);
   },
   namentafel: el => { S.settings.namenTafel = el.checked; save(); NAMEN.letzter = null; namenAbgleichen(); toast(el.checked ? 'Namen für die Tafel freigegeben' : 'Namen für die Tafel entfernt'); },
   restore: async el => {
@@ -3007,8 +3063,13 @@ document.addEventListener('keydown', e => {
 
 // ---------- Start ----------
 (async function start() {
+  if (!sitzungDa()) await BUND.loeschen();       // abgemeldet (auch in einer anderen Anwendung): Bund weg
+  UI.bund = await BUND.laden();
+  UI.bundOeffnet = !!(UI.bund && LOCAL);         // mit Bund und Daten auf dem Gerät gleich „Wird geöffnet …“
   renderLock();
   await initSync();
+  if (!S && UI.bund && vaultExists()) { UI.bundOeffnet = true; renderLock(); await oeffneMitBund(); }
+  UI.bundOeffnet = false;
   if (!S) renderLock();
 })();
 

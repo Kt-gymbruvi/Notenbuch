@@ -1,5 +1,8 @@
 # Entscheidungen – Notenbuch
 
+## 2026-11-14 – Gemeinsamer Schlüsselbund, keine Zeitsperre (Tafel-SPEC Etappe B)
+- Das Passwort gilt einmal je Gerät für Notenbuch, Tafel und Startseite; abgelegt wird nur ein nicht exportierbarer PBKDF2-Grundschlüssel (IndexedDB `lehrraum-schluessel`). Tresorformat unverändert. Die Zeitsperre entfällt auf Wunsch der Lehrkraft; gesperrt wird bewusst („Auf diesem Gerät sperren“) oder durch Abmelden. Begründung ausführlich in `../Lehrraum/docs/DECISIONS.md`.
+
 ## 2026-11-14 – Namensliste für die Tafel (Etappe 2)
 - **Eigene Liste statt Zugriff aufs Notenbuch:** Die Tafel soll nie Noten sehen; sie bekommt nur, was sie für Zufall und Gruppen braucht.
 - **Gleiches Passwort, eigenes Salz:** ein Passwort für die Lehrkraft, aber ein anderer Schlüssel. Wer die Namensliste entschlüsselt, kann damit das Notenbuch nicht öffnen. Das Salz liegt im (verschlüsselten) Notenbuch, damit alle Geräte dasselbe verwenden und die Tafel nicht immer wieder nach dem Passwort fragt.
