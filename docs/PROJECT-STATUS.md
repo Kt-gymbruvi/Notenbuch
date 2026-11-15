@@ -4,6 +4,9 @@ Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unte
 Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
 Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
+## Nachtrag: Arbeiten unter Erfassen (15.11.2026, nicht veröffentlicht)
+- Spalte: „Arbeiten“ von Überblick nach Erfassen; Handy: Werkzeugreihe Lehrstoff · Zufall · Liste · Gruppe · Arbeiten, Überblick ohne Arbeiten, Arbeiten zählt zum Reiter Klasse. Geprüft in der Vorschau (PC, Handy hell).
+
 ## Neue Bedienung – Etappe 6: Handy und Aussehen wie die Tafel (gebaut 15.11.2026, nicht veröffentlicht)
 - **Handy:** Reiter Plan · Klasse · Überblick · Mehr (`reiterVon`, `ueberblickReiterHTML`, Aktion `ueberblick`). Klasse: Werkzeugreihe mit Lehrstoff, Zufall, Liste (Zähler) und Gruppe, darunter Datum, Hinweis Stundenende, scrollbare Modusleiste (klebt oben), Namen. Überblick: Unterreiter Noten, Fehlzeiten, Arbeiten, Sport, AV/SV (Sek I), Beobachtungen. Mehr ohne Klassenseiten; „‹ Mehr“ auf Klassenseiten ausgeblendet (`body.klassenseite`).
 - **Aussehen** wie die Tafel (siehe DECISIONS 15.11.): Farben aus `tokens.css`, Glas für Kopfzeile und Reiter, Dunkelblau/Türkis für Gewähltes, Systemschrift, SVG-Symbole statt Emojis, gemeinsame Hell/Dunkel-Auswahl `lehrraum-design`.

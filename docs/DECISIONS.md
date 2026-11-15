@@ -1,5 +1,8 @@
 # Entscheidungen – Notenbuch
 
+## 2026-11-15 – Arbeiten unter Erfassen (Wunsch der Lehrkraft)
+- Arbeiten und Tests werden dort bepunktet, also erfasst: in der Spalte unter Erfassen (nach „Note für Gruppe“), auf dem Handy als fünfter Knopf der Werkzeugreihe im Reiter Klasse. Im Überblick steht es nicht mehr.
+
 ## 2026-11-15 – Aussehen wie die Tafel (Wunsch der Lehrkraft)
 - **Gleiche Farben wie Tafel und Startseite** (`gemeinsam/tokens.css`, `Lehrraum/src/index.css`): helle, kühle Flächen, Dunkelblau als Farbe des Gewählten (dunkler Modus: Türkis), Türkis als Fokus. Gelb nur noch für Hinweise (vergangener Tag, Stundenende, Planung).
 - **Kopfzeile und Reiterleiste als Glas** statt dunkelblauer Balken; Klassenkopf in der Spalte hell.

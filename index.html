@@ -498,7 +498,7 @@ body[data-dev="pc"] .tile:hover,body[data-dev="pc"] .list button:hover{backgroun
 /* niedrige Fenster (PC-Browser, iPad quer): Spalte enger setzen, damit sie möglichst ohne Scrollen passt */
 @media (max-height:900px){.ksb{min-height:32px;padding-top:4px;padding-bottom:4px}.ksg{margin:5px 6px 1px}.kshinweis{padding:6px 8px;margin:4px 0}}
 .badge svg,.lbadge svg{width:12px;height:12px;vertical-align:-2px;margin-right:2px}
-.werkzeuge{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}
+.werkzeuge{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:0 0 12px}
 .wz{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;border-radius:14px;background:var(--surface);color:var(--ink);padding:9px 4px 7px;font-size:12.5px;font-weight:600;box-shadow:0 1px 2px rgb(10 45 83 / .06)}
 .wz svg{width:22px;height:22px}
 .wz[aria-pressed="true"]{background:var(--wahl);color:var(--wahl-ink)}
@@ -1528,16 +1528,16 @@ function tabsFor(D, c) {
   return [['plan', 'Plan'], ...(c ? [['klasse', c.name, 'zurklasse']] : []), ['mehr', 'Mehr']];
 }
 const KLASSEN_ANSICHTEN = ['erfassen', 'noten', 'fehl', 'arbeiten', 'sport'];
-const UEBERBLICK = ['noten', 'fehl', 'arbeiten', 'sport'];
+const UEBERBLICK = ['noten', 'fehl', 'sport'];   // Arbeiten gehört zu Erfassen (Reiter Klasse)
 // Handy: zu welchem der vier Reiter gehört die aktuelle Ansicht?
 function reiterVon() {
   if (UEBERBLICK.includes(UI.view) || (UI.view === 'mehr' && ['avsv', 'journal'].includes(UI.sub))) return 'ueberblick';
-  if (UI.view === 'mehr' && ['topics', 'lists', 'list'].includes(UI.sub)) return 'erfassen';
+  if (UI.view === 'arbeiten' || (UI.view === 'mehr' && ['topics', 'lists', 'list'].includes(UI.sub))) return 'erfassen';
   return UI.view;
 }
 // Handy: Unterreiter im Überblick (waagerecht scrollbar)
 function ueberblickReiterHTML(c) {
-  const r = [['tab', 'noten', 'Noten'], ['tab', 'fehl', 'Fehlzeiten'], ['tab', 'arbeiten', 'Arbeiten'], ...(c.subject === 'sport' ? [['tab', 'sport', 'Sport']] : []),
+  const r = [['tab', 'noten', 'Noten'], ['tab', 'fehl', 'Fehlzeiten'], ...(c.subject === 'sport' ? [['tab', 'sport', 'Sport']] : []),
     ...(c.level === 'sek1' ? [['go', 'avsv', 'AV/SV']] : []), ['go', 'journal', 'Beobachtungen']];
   const an = ([a, v]) => a === 'tab' ? UI.view === v : UI.view === 'mehr' && UI.sub === v;
   return `<div class="seg unterreiter" role="group" aria-label="Überblick">${r.map(x => `<button data-a="${x[0]}" data-v="${x[1]}" aria-pressed="${an(x)}">${x[2]}</button>`).join('')}</div>`;
@@ -1566,8 +1566,9 @@ function klassenSpalteHTML(c) {
     ${c.level === 'sek1' ? modus('avsv', ICON.avsv, 'AV/SV') : ''}
     ${modus('verg', ICON.verg, c.subject === 'sport' ? 'Vermerke' : 'Vergessen')}
     ${knopf('bulk', null, ICON.gruppe, 'Note für Gruppe', null)}
+    ${blick('arbeiten', 'Arbeiten')}
     <div class="ksg">Überblick</div>
-    ${blick('noten', 'Noten')}${blick('fehl', 'Fehlzeiten')}${blick('arbeiten', 'Arbeiten')}${c.subject === 'sport' ? blick('sport', 'Sport') : ''}
+    ${blick('noten', 'Noten')}${blick('fehl', 'Fehlzeiten')}${c.subject === 'sport' ? blick('sport', 'Sport') : ''}
     ${c.level === 'sek1' ? seite('avsv', ICON.avsv, 'AV/SV') : ''}${seite('journal', ICON.beob, 'Beobachtungen')}
     <span class="ksgrow"></span>
     ${hinweisEndeHTML(c)}
@@ -1655,8 +1656,8 @@ function erfassenHTML(c) {
   const dTag = seatDay(), att = c.att[dTag] || {}, m = listModus(c);
   const L = activeList(c), handy = dev() === 'phone';
   // Handy: Werkzeuge der Klasse als Symbolreihe (wie die Spalte auf iPad/PC)
-  const wz = handy ? `<div class="werkzeuge">${[['topic', ICON.lehrstoff, 'Lehrstoff', ''], ['rand', ICON.zufall, 'Zufall', ''], ['listpick', ICON.liste, 'Liste', L ? `${doneCount(c, L)}/${c.students.length}` : ''], ['bulk', ICON.gruppe, 'Gruppe', '']]
-    .map(([a, i, t, z]) => `<button class="wz" data-a="${a}" ${a === 'listpick' ? `aria-pressed="${!!L}"` : ''}>${i}<span>${t}</span>${z ? `<em>${z}</em>` : ''}</button>`).join('')}</div>` : '';
+  const wz = handy ? `<div class="werkzeuge">${[['topic', ICON.lehrstoff, 'Lehrstoff', ''], ['rand', ICON.zufall, 'Zufall', ''], ['listpick', ICON.liste, 'Liste', L ? `${doneCount(c, L)}/${c.students.length}` : ''], ['bulk', ICON.gruppe, 'Gruppe', ''], ['tab', ICON.arbeiten, 'Arbeiten', '', 'arbeiten']]
+    .map(([a, i, t, z, v]) => `<button class="wz" data-a="${a}" ${v ? `data-v="${v}"` : ''} ${a === 'listpick' ? `aria-pressed="${!!L}"` : ''}>${i}<span>${t}</span>${z ? `<em>${z}</em>` : ''}</button>`).join('')}</div>` : '';
   const head = `${wz}<div class="spread" style="margin-bottom:14px">
     ${handy ? '<span></span>' : `<div class="seg" role="group" aria-label="Ansicht"><button data-a="listmode" data-v="sitz" aria-pressed="${UI.listMode === 'sitz'}">Sitzplan</button><button data-a="listmode" data-v="kacheln" aria-pressed="${UI.listMode === 'kacheln'}">Namen</button></div>`}
     <span class="row">${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}<span class="row datumwahl ${dTag !== today() ? 'vergangen' : ''}"><button class="btn sm" data-a="seatday" data-d="-1" aria-label="Früherer Tag">‹</button><input class="in" type="date" value="${dTag}" data-c="seatdate" aria-label="Datum der Einträge"><button class="btn sm" data-a="seatday" data-d="1" aria-label="Späterer Tag">›</button>${dTag !== today() ? '<button class="btn sm" data-a="seatday" data-d="0">Heute</button>' : ''}</span></span></div>`;

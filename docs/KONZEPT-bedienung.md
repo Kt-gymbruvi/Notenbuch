@@ -29,9 +29,9 @@ Die heutige Hauptnavigation entfällt in der Klassenansicht vollständig; es gib
 |---|---|---|
 | Kopf | Klassenname, aktuelle Stunde | Antippen = Lerngruppe wechseln |
 | Unterricht | Lehrstoff · Zufall · Liste | Werkzeuge (Fenster/Overlay). Liste zeigt Zähler der aktiven Liste (z. B. 12/28) |
-| Erfassen | Anwesenheit · Mitarbeit · AV/SV (Sek I) · Vergessen · Note für Gruppe | Modi; aktiver Modus hervorgehoben |
-| Erfassen (Sport) | Anwesenheit · Mitarbeit · Messwerte · Vermerke · Note für Gruppe | wie oben |
-| Überblick | Noten · Fehlzeiten · Arbeiten · (Sport: Messwerte) | Auswertungen, ersetzen den Inhaltsbereich |
+| Erfassen | Anwesenheit · Mitarbeit · AV/SV (Sek I) · Vergessen · Note für Gruppe · Arbeiten | Modi; aktiver Modus hervorgehoben |
+| Erfassen (Sport) | Anwesenheit · Mitarbeit · Messwerte · Vermerke · Note für Gruppe · Arbeiten | wie oben |
+| Überblick | Noten · Fehlzeiten · (Sport: Messwerte) · AV/SV · Beobachtungen | Auswertungen, ersetzen den Inhaltsbereich |
 | Unten | Hinweis Stundenende (falls nötig) · Stundenplan · Mehr | |
 
 - **Kopfzeile des Inhalts:** Umschalter „Sitzplan | Namen“, Modus und Datum, rechts „Tische umstellen“ (nur im Sitzplan).
@@ -79,7 +79,8 @@ Die heutige Hauptnavigation entfällt in der Klassenansicht vollständig; es gib
 - Unten vier feste Reiter: **Plan · Klasse · Überblick · Mehr**.
 - **Klasse:** oben Klassenname mit Symbolen für Lehrstoff, Zufall, Liste; darunter waagerecht scrollbare Modusleiste;
   darunter die Namensliste. Start mit Anwesenheit und „Alle da, weiter“ wie oben.
-- **Überblick:** Unterreiter Noten · Fehlzeiten · Arbeiten (Sport: Messwerte).
+- **Überblick:** Unterreiter Noten · Fehlzeiten (Sport: Messwerte) · AV/SV · Beobachtungen.
+- **Arbeiten** gehört zu Erfassen (Nachtrag 15.11.2026): iPad/PC in der Spalte unter „Note für Gruppe“, Handy in der Werkzeugreihe der Klasse.
 
 ## „Mehr“ danach
 Nur noch Klassenübergreifendes: Suche, Lerngruppen, Schülerliste/Import, Leistungstabellen Sport, Sportarten und
