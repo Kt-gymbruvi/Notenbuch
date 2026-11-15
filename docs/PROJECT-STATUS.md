@@ -4,6 +4,11 @@ Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unte
 Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
 Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
+## Neue Bedienung – Etappe 6: Handy und Aussehen wie die Tafel (gebaut 15.11.2026, nicht veröffentlicht)
+- **Handy:** Reiter Plan · Klasse · Überblick · Mehr (`reiterVon`, `ueberblickReiterHTML`, Aktion `ueberblick`). Klasse: Werkzeugreihe mit Lehrstoff, Zufall, Liste (Zähler) und Gruppe, darunter Datum, Hinweis Stundenende, scrollbare Modusleiste (klebt oben), Namen. Überblick: Unterreiter Noten, Fehlzeiten, Arbeiten, Sport, AV/SV (Sek I), Beobachtungen. Mehr ohne Klassenseiten; „‹ Mehr“ auf Klassenseiten ausgeblendet (`body.klassenseite`).
+- **Aussehen** wie die Tafel (siehe DECISIONS 15.11.): Farben aus `tokens.css`, Glas für Kopfzeile und Reiter, Dunkelblau/Türkis für Gewähltes, Systemschrift, SVG-Symbole statt Emojis, gemeinsame Hell/Dunkel-Auswahl `lehrraum-design`.
+- Geprüft in der Vorschau: Handy hell und dunkel (Reiter, Unterreiter, letzter Unterreiter, Lehrstoff → Alle Einträge, Mehr, Sport-Modusleiste), PC hell (Spalte, Sitzplan, Stundenplan), Sperrbildschirm hell. **Nicht geprüft:** echtes iPhone/iPad (Glas-Unschärfe, klebende Modusleiste bei langer Liste), Druck/PDF-Ausgaben, alle Fenster im dunklen Modus.
+
 ## Neue Bedienung – Etappe 5: Werkzeuge und Mehr (gebaut 15.11.2026, nicht veröffentlicht)
 - **Lehrstoff-Fenster:** links Datum, Geplant-Hinweis, Gemacht/Geplant; rechts die letzten 8 Stunden der Lerngruppe (antippen = diesen Tag öffnen) und „Alle Einträge ›“. Handy: die letzten Stunden unter der Eingabe.
 - **Hinweis Stundenende** (`stundeVorbeiOhneLehrstoff`): Ist eine Stunde der Lerngruppe heute laut Plan vorbei, läuft keine weitere und fehlt „Gemacht“ für heute, steht unten in der Spalte „📖 Lehrstoff noch nicht erfasst“ → öffnet das Fenster. Handy: über den Modi (ersetzt dann die Plan-Karte). Aktualisiert sich bei der nächsten Bedienung, nicht minutengenau.

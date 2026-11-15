@@ -1,6 +1,6 @@
 # Konzept: Neue Bedienung des Notenbuchs
 
-Stand: 15.11.2026 · abgestimmt mit der Lehrkraft, Etappen 1–5 gebaut (Branch, nicht veröffentlicht), Etappe 6 offen.
+Stand: 15.11.2026 · abgestimmt mit der Lehrkraft, Etappen 1–6 gebaut (Branch, nicht veröffentlicht).
 
 ## Ausgangslage (Probleme heute)
 - Dieselbe Klasse hat zwei verschiedene Bedienleisten: aus dem Stundenplan das Sitzplan-Vollbild mit eigener Modusspalte

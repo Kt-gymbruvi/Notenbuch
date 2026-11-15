@@ -11,7 +11,8 @@ Stand: `docs/PROJECT-STATUS.md`, Entscheidungen: `docs/DECISIONS.md`. Gesamtplan
 - Eine Datei `index.html` (HTML/CSS/JS, kein Build, keine npm-Abhängigkeiten). Was im Repo liegt, wird so ausgeliefert.
 - Hosting: GitHub Pages, Repository `Kt-gymbruvi/Notenbuch`, „Deploy from a branch“ (`main`, Root), `.nojekyll`.
 - Bibliotheken liegen in `bibliotheken/` (supabase-js 2.119 UMD, pdf.js 3.11.174, jsPDF 2.5.1, jspdf-autotable 3.8.2,
-  tesseract.js 5.1.1 mit Kern und deutschem Modell). Schrift Atkinson Hyperlegible in `schriften/`. Nichts von fremden Servern.
+  tesseract.js 5.1.1 mit Kern und deutschem Modell). Schrift: Systemschrift wie die Tafel (Atkinson Hyperlegible liegt noch in `schriften/`, wird nicht benutzt). Nichts von fremden Servern.
+- Design wie die Tafel: Farben aus `../Kt-gymbruvi.github.io/gemeinsam/tokens.css`, Glas für Kopf- und Reiterleiste, Dunkelblau (dunkel: Türkis) für Gewähltes, SVG-Symbole (`ICON`), Hell/Dunkel über `data-design` und `localStorage` „lehrraum-design“.
 - Aufbau in `index.html`: `Core` (Notenrechnung, Schlüssel, Messwerte, Namenslisten, Krypto) → Speicher/Sync/Sperre → Ansichten → Dialoge → Aktionen (`A` für Klicks, `CH` für Änderungen) → Start.
 
 ## Daten und Sicherheit
