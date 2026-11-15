@@ -4,6 +4,14 @@ Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unte
 Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
 Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
+## Neue Bedienung – Etappe 5: Werkzeuge und Mehr (gebaut 15.11.2026, nicht veröffentlicht)
+- **Lehrstoff-Fenster:** links Datum, Geplant-Hinweis, Gemacht/Geplant; rechts die letzten 8 Stunden der Lerngruppe (antippen = diesen Tag öffnen) und „Alle Einträge ›“. Handy: die letzten Stunden unter der Eingabe.
+- **Hinweis Stundenende** (`stundeVorbeiOhneLehrstoff`): Ist eine Stunde der Lerngruppe heute laut Plan vorbei, läuft keine weitere und fehlt „Gemacht“ für heute, steht unten in der Spalte „📖 Lehrstoff noch nicht erfasst“ → öffnet das Fenster. Handy: über den Modi (ersetzt dann die Plan-Karte). Aktualisiert sich bei der nächsten Bedienung, nicht minutengenau.
+- **Mehr (iPad/PC)** nur noch Klassenübergreifendes: Suche, Lerngruppen, Schülerliste, Sportarten und Gewichtung, Leistungstabellen, Daten und Sicherheit. Lehrstoff (über das Fenster), Listen („Listen verwalten“ in der Listenwahl), AV/SV-Übersicht und Beobachtungen (neu im Überblick der Spalte) öffnen mit der Klassenspalte; „‹ Mehr“ ist dort ausgeblendet. Handy-Mehr bleibt bis Etappe 6 wie bisher.
+- **Begriffe:** Handy-Reiter „Erfassen“, Modus „Anwesenheit“, „Note für Gruppe“ überall (statt „Gruppe eintragen“), Einstellung „zuerst die Namen statt des Sitzplans“.
+- Spalte bei Fensterhöhe unter 900 px enger gesetzt, Laufleiste ausgeblendet (scrollt weiter), lange Wörter brechen um.
+- Geprüft in der Vorschau (Uhrzeit für den Hinweis simuliert, Mo 10:30): PC hell, iPad hoch, Handy dunkel; Fenster, Alle Einträge, Spalte hervorgehoben, Listen verwalten, Mehr-Inhalt, Hinweis verschwindet nach Speichern. **Nicht geprüft:** echtes iPad, Hinweis zur echten Uhrzeit.
+
 ## Neue Bedienung – Etappe 4: Fehlzeiten als Auswertung, Messwerte als Modus (gebaut 15.11.2026, nicht veröffentlicht)
 - **Fehlzeiten** ist reine Auswertung: Tabelle je Person mit E, U, V, Vergessen/Vermerken (Halbjahr, ab 3 rot) und letztem Fehltag, sortierbar nach Namen oder Fehltagen; Zeile → Schülerkarte. Darunter „Tage mit Fehlzeiten“ (antippen = diesen Tag im Modus Anwesenheit bearbeiten). Oben „Anwesenheit heute erfassen“ und „anderer Tag“. Erfasst wird nur noch im Modus Anwesenheit. Handy-Reiter heißt jetzt „Fehlzeiten“.
 - **Namensliste** hat eine Datumswahl (‹ Datum › Heute, vergangener Tag gelb) – wie der Sitzplan, für alle Modi.

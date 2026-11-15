@@ -190,6 +190,13 @@ button.tl:active{background:var(--surface-2)}
 .tplab{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .tpcard{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px;text-align:left;width:100%;background:transparent;color:inherit;cursor:pointer;display:block}
 .tpcard p{margin:2px 0 0;white-space:pre-wrap}
+.tpgrid{display:grid;gap:18px;align-items:start}
+.tpletzte .tpcard p{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+@media (min-width:760px){body:not([data-dev="phone"]) .tpgrid{grid-template-columns:minmax(0,1fr) minmax(220px,300px)}
+  body:not([data-dev="phone"]) .tpletzte{border-left:1px solid var(--line);padding-left:16px;max-height:66vh;overflow:auto}}
+.kshinweis{display:block;width:100%;text-align:left;border:0;border-left:4px solid var(--yellow);background:var(--surface);border-radius:8px;padding:8px 10px;margin:6px 0;color:var(--ink);font-weight:700;font-size:13px;line-height:1.25;cursor:pointer}
+.kshinweis small{display:block;font-weight:400;color:var(--muted)}
+.hinweisende{margin-bottom:10px}
 .planhint{border-left:4px solid var(--yellow);padding:8px 12px;margin-bottom:12px}
 /* AV/SV */
 .avlist{display:flex;flex-direction:column;gap:6px}
@@ -455,7 +462,7 @@ body[data-dev="pc"] .tile:hover,body[data-dev="pc"] .list button:hover{backgroun
 /* Feste linke Spalte in der Klasse (iPad und PC): ersetzt Kopfzeile und Navigation */
 :root{--ksw:156px}
 .kspalte{position:fixed;top:0;bottom:0;left:0;width:var(--ksw);z-index:6;background:var(--surface);border-right:1px solid var(--line);
-  display:flex;flex-direction:column;gap:2px;overflow-y:auto;overflow-x:hidden;
+  display:flex;flex-direction:column;gap:2px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
   padding:calc(8px + env(safe-area-inset-top,0px)) 8px calc(8px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px))}
 .kskopf{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:0;border-radius:12px;background:var(--head-bg);color:var(--head-ink);padding:8px 10px;margin-bottom:4px}
 .kskopf b{font-size:17px;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -466,11 +473,15 @@ body[data-dev="pc"] .tile:hover,body[data-dev="pc"] .list button:hover{backgroun
 .ksb:hover{background:var(--surface-2)}
 .ksb .ksi{width:22px;flex:none;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--muted)}
 .ksb .ksi svg{width:20px;height:20px}
-.ksb .ksl{flex:1;min-width:0;line-height:1.15;hyphens:auto;-webkit-hyphens:auto}
+.ksb .ksl{flex:1;min-width:0;line-height:1.15;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
 .ksb .ksn{font-size:11.5px;color:var(--muted);font-weight:700}
 .ksb[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink)}
 .ksb[aria-pressed="true"] .ksi,.ksb[aria-pressed="true"] .ksn{color:var(--yellow-ink)}
 .ksgrow{flex:1;min-height:8px}
+.kspalte::-webkit-scrollbar{display:none}
+/* niedrige Fenster (PC-Browser, iPad quer): Spalte enger setzen, damit sie möglichst ohne Scrollen passt */
+@media (max-height:900px){.ksb{min-height:32px;padding-top:4px;padding-bottom:4px}.ksg{margin:5px 6px 1px}.kshinweis{padding:6px 8px;margin:4px 0}}
+body.mitspalte .zurueckmehr{display:none}
 .kspalte .sync{margin:0 8px 4px;font-size:11.5px;color:var(--muted);white-space:normal}
 body.mitspalte main{margin-left:var(--ksw);max-width:none;padding:22px 28px 40px}
 body.mitspalte main.fs{position:fixed;top:0;left:var(--ksw);right:0;bottom:0;height:auto;margin:0;grid-template-columns:minmax(0,1fr) auto;
@@ -1472,23 +1483,27 @@ async function offerDownload(filename, data) {
 // Handy: Leiste unten wie bisher. iPad/PC: außerhalb einer Klasse nur Stundenplan · zuletzt geöffnete Klasse · Mehr;
 // in der Klasse ersetzt die feste linke Spalte (klassenSpalteHTML) die Navigation.
 function tabsFor(D, c) {
-  if (D === 'phone') return [['plan', 'Plan'], ['erfassen', 'Eintragen'], ['fehl', 'Fehlzeiten'], ['mehr', 'Mehr']];
+  if (D === 'phone') return [['plan', 'Plan'], ['erfassen', 'Erfassen'], ['fehl', 'Fehlzeiten'], ['mehr', 'Mehr']];
   return [['plan', 'Plan'], ...(c ? [['klasse', c.name, 'zurklasse']] : []), ['mehr', 'Mehr']];
 }
 const KLASSEN_ANSICHTEN = ['erfassen', 'noten', 'fehl', 'arbeiten', 'sport'];
-const mitSpalte = (D, c) => D !== 'phone' && !!c && KLASSEN_ANSICHTEN.includes(UI.view);
+// Seiten unter „Mehr“, die zu einer Lerngruppe gehören: auf iPad/PC mit der Klassenspalte statt „‹ Mehr“
+const KLASSEN_SEITEN = ['topics', 'lists', 'list', 'avsv', 'journal'];
+const mitSpalte = (D, c) => D !== 'phone' && !!c && (KLASSEN_ANSICHTEN.includes(UI.view) || (UI.view === 'mehr' && KLASSEN_SEITEN.includes(UI.sub)));
 // Feste linke Spalte der Klasse: Kopf · Unterricht · Erfassen · Überblick · Stundenplan/Mehr – immer an denselben Orten
 function klassenSpalteHTML(c) {
   const erf = UI.view === 'erfassen', L = activeList(c), nList = listsOf(c).filter(l => !l.archived).length;
   const knopf = (a, v, icon, label, aktiv, extra = '', zahl = '') => `<button class="ksb" data-a="${a}" ${v != null ? `data-v="${v}"` : ''} ${aktiv != null ? `aria-pressed="${aktiv}"` : ''} ${extra}><span class="ksi">${icon}</span><span class="ksl">${label}</span>${zahl ? `<span class="ksn">${zahl}</span>` : ''}</button>`;
   const modus = (k, icon, label) => knopf('modus', k, icon, label, erf && UI.modus === k);
   const blick = (k, label) => knopf('tab', k, ICON[k], label, UI.view === k);
+  const seite = (v, icon, label, subs = [v]) => knopf('go', v, icon, label, UI.view === 'mehr' && subs.includes(UI.sub));
+  const auf = (...subs) => UI.view === 'mehr' && subs.includes(UI.sub);
   return `<aside class="kspalte" aria-label="Lerngruppe ${esc(c.name)}">
     <button class="kskopf" data-a="pickcls" aria-label="Lerngruppe wechseln"><b>${esc(c.name)}</b><small>${subjName(c.subject)}, ${c.level === 'sek2' ? 'Sek II' : 'Sek I'}, ${c.term}. Hj.</small></button>
     <div class="ksg">Unterricht</div>
-    ${knopf('topic', null, '📖', 'Lehrstoff', null)}
+    ${knopf('topic', null, '📖', 'Lehrstoff', auf('topics') || null)}
     ${knopf('rand', null, '🎲', 'Zufall', null)}
-    ${knopf('listpick', null, '📋', 'Liste', L ? true : null, '', L ? `${doneCount(c, L)}/${c.students.length}` : nList ? String(nList) : '')}
+    ${knopf('listpick', null, '📋', 'Liste', L || auf('lists', 'list') ? true : null, '', L ? `${doneCount(c, L)}/${c.students.length}` : nList ? String(nList) : '')}
     <div class="ksg">Erfassen</div>
     ${modus('anw', '✓', 'Anwesenheit')}
     ${modus('noten', '✎', 'Mitarbeit')}
@@ -1498,7 +1513,9 @@ function klassenSpalteHTML(c) {
     ${knopf('bulk', null, '👥', 'Note für Gruppe', null)}
     <div class="ksg">Überblick</div>
     ${blick('noten', 'Noten')}${blick('fehl', 'Fehlzeiten')}${blick('arbeiten', 'Arbeiten')}${c.subject === 'sport' ? blick('sport', 'Sport') : ''}
+    ${c.level === 'sek1' ? seite('avsv', '★', 'AV/SV') : ''}${seite('journal', '🗒', 'Beobachtungen')}
     <span class="ksgrow"></span>
+    ${hinweisEndeHTML(c)}
     ${syncHTML()}
     ${knopf('toplan', null, ICON.plan, 'Stundenplan', null)}
     ${knopf('tab', 'mehr', ICON.mehr, 'Mehr', null)}
@@ -1579,9 +1596,9 @@ function erfassenHTML(c) {
   const dTag = seatDay(), att = c.att[dTag] || {}, m = listModus(c);
   const head = `<div class="spread" style="margin-bottom:14px">
     ${dev() === 'phone' ? '<span></span>' : `<div class="seg" role="group" aria-label="Ansicht"><button data-a="listmode" data-v="sitz" aria-pressed="${UI.listMode === 'sitz'}">Sitzplan</button><button data-a="listmode" data-v="kacheln" aria-pressed="${UI.listMode === 'kacheln'}">Namen</button></div>`}
-    <span class="row">${dev() === 'phone' ? `<button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>` : ''}${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}${dev() === 'phone' ? '<button class="btn sm" data-a="bulk">Gruppe eintragen</button>' : ''}<span class="row datumwahl ${dTag !== today() ? 'vergangen' : ''}"><button class="btn sm" data-a="seatday" data-d="-1" aria-label="Früherer Tag">‹</button><input class="in" type="date" value="${dTag}" data-c="seatdate" aria-label="Datum der Einträge"><button class="btn sm" data-a="seatday" data-d="1" aria-label="Späterer Tag">›</button>${dTag !== today() ? '<button class="btn sm" data-a="seatday" data-d="0">Heute</button>' : ''}</span></span></div>`;
+    <span class="row">${dev() === 'phone' ? `<button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>` : ''}${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}${dev() === 'phone' ? '<button class="btn sm" data-a="bulk">Note für Gruppe</button>' : ''}<span class="row datumwahl ${dTag !== today() ? 'vergangen' : ''}"><button class="btn sm" data-a="seatday" data-d="-1" aria-label="Früherer Tag">‹</button><input class="in" type="date" value="${dTag}" data-c="seatdate" aria-label="Datum der Einträge"><button class="btn sm" data-a="seatday" data-d="1" aria-label="Späterer Tag">›</button>${dTag !== today() ? '<button class="btn sm" data-a="seatday" data-d="0">Heute</button>' : ''}</span></span></div>`;
   const L = activeList(c);
-  const tpHint = (() => { const t = topicOf(c, today()); if (t && t.done) return ''; const p = lastPlan(c, today()); return p ? `<div class="card planhint"><span class="small muted">Geplant (vom ${fmtDate(p.date)}):</span><div style="white-space:pre-wrap">${esc(p.plan)}</div><button class="btn sm" data-a="topic" style="margin-top:6px">Lehrstoff eintragen</button></div>` : ''; })();
+  const tpHint = (() => { const t = topicOf(c, today()); if (t && t.done) return ''; const p = lastPlan(c, today()); return p ? `<div class="card planhint"><span class="small muted">Geplant (vom ${fmtDate(p.date)}):</span><div style="white-space:pre-wrap">${esc(p.plan)}</div><button class="btn sm" data-a="topic" style="margin-top:6px">Lehrstoff erfassen</button></div>` : ''; })();
   const banner = L ? `<div class="card lbanner"><span>📋 <b>${esc(L.title)}</b> · ${doneCount(c, L)} von ${c.students.length} erledigt${L.due ? ' · Frist ' + fmtDate(L.due) : ''}<br><span class="small muted">Antippen hakt ab oder entfernt den Haken.</span></span><span class="row"><button class="btn sm" data-a="openlist" data-v="${L.id}">Bemerkungen</button><button class="btn primary sm" data-a="listsel" data-v="">Fertig</button></span></div>` : '';
   if (UI.listMode === 'sitz') return head + banner + seatsHTML(c, c.att[seatDay()] || {});
   if (L) return head + banner + `<div class="tiles namelist">${sorted(c).map(s => { const d = (L.done || {})[s.id];
@@ -1592,7 +1609,8 @@ function erfassenHTML(c) {
     </button>`; }).join('')}</div>`;
   // Antippen wirkt wie im Sitzplan: Mitarbeit = Notenauswahl, sonst der gewählte Modus
   const mt = m === 'verg' ? curMT(c) : null;
-  return head + tpHint + modusLeisteHTML(c) + (UI.pick && m === 'noten' ? pickPopHTML(c) : '') + `<div class="tiles namelist">${sorted(c).map(s => {
+  const ende = dev() === 'phone' ? hinweisEndeHTML(c, 'hinweisende') : '';   // ersetzt dann die Plan-Karte (Plan steht im Lehrstoff-Fenster)
+  return head + (ende || tpHint) + modusLeisteHTML(c) + (UI.pick && m === 'noten' ? pickPopHTML(c) : '') + `<div class="tiles namelist">${sorted(c).map(s => {
     const ents = c.entries.filter(e => e.sid === s.id);
     const last = ents.reduce((m, e) => e.date > m ? e.date : m, '');
     const st = att[s.id]; const ex = activeEx(s, dTag);
@@ -1606,7 +1624,7 @@ function erfassenHTML(c) {
     </button>`; }).join('')}</div>`;
 }
 // Modi der Namensliste (Handy: Leiste oben; iPad/PC: linke Spalte). „Tische“ und „Listen“ gelten hier als Mitarbeit.
-const modiOf = c => [['anw', 'Anwesend'], ['noten', 'Mitarbeit'], ...(c.subject === 'sport' ? [['mess', 'Messwerte']] : []), ['verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen'], ...(c.level === 'sek1' ? [['avsv', 'AV/SV']] : [])];
+const modiOf = c => [['anw', 'Anwesenheit'], ['noten', 'Mitarbeit'], ...(c.subject === 'sport' ? [['mess', 'Messwerte']] : []), ['verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen'], ...(c.level === 'sek1' ? [['avsv', 'AV/SV']] : [])];
 const listModus = c => modiOf(c).some(([k]) => k === UI.modus) ? UI.modus : 'noten';
 function modusLeisteHTML(c) {
   const m = listModus(c);
@@ -1870,7 +1888,7 @@ function notenHTML(c) {
   if (!c.students.length) return needStudents(c);
   const wsum = c.cats.reduce((a, k) => a + (+k.w || 0), 0);
   const nu = usesUnits(c) ? unitsOf(c).filter(u => c.entries.some(e => e.unit === u.id)) : [];
-  return `<div class="spread"><h1>Noten</h1><span class="row"><button class="btn sm" data-a="bulk">Gruppe eintragen</button><button class="btn sm" data-a="movecat">Umbuchen</button></span></div>
+  return `<div class="spread"><h1>Noten</h1><span class="row"><button class="btn sm" data-a="bulk">Note für Gruppe</button><button class="btn sm" data-a="movecat">Umbuchen</button></span></div>
   <div class="spread"><span class="muted small">Gewichtung: ${c.cats.map(k => `${esc(k.name)} ${k.w} %`).join(', ')}${wsum !== 100 ? ' (Summe ≠ 100, wird anteilig verrechnet)' : ''}</span></div>
   <div class="tw"><table class="t"><thead><tr><th>Name</th>${nu.map(u => `<th class="c" title="Teilbereiche: ${esc((u.subs || []).map(sb => sb.name + ' ' + sb.w).join(', '))}">${unitIcon(u)} ${esc(u.name)}</th>`).join('')}${c.cats.map(k => `<th class="c">${esc(k.name)}</th>`).join('')}<th class="c">Berechnet</th><th class="c">Zeugnis</th><th class="c">Anz.</th></tr></thead>
   <tbody>${sorted(c).map(s => {
@@ -2081,10 +2099,10 @@ function mehrHTML(c) {
     <input class="in" id="q" type="search" data-c="srch" autocomplete="off" placeholder="Suchen: Name, Notiz, Bemerkung, Arbeit …" value="${esc(UI.q || '')}" style="margin-bottom:8px">
     <div id="sres">${searchResults()}</div>
     <div class="list">${phoneItems}
-    ${c && c.level === 'sek1' ? `<button data-a="go" data-v="avsv"><span><b>Arbeits- und Sozialverhalten</b><br><span class="muted small">Übersicht aller Personen mit Vorschlag A–E – ${avsvOf(c).length} Einträge</span></span><span>›</span></button>` : ''}
+    ${dev() === 'phone' ? `${c && c.level === 'sek1' ? `<button data-a="go" data-v="avsv"><span><b>Arbeits- und Sozialverhalten</b><br><span class="muted small">Übersicht aller Personen mit Vorschlag A–E – ${avsvOf(c).length} Einträge</span></span><span>›</span></button>` : ''}
     ${c ? `<button data-a="go" data-v="topics"><span><b>Lehrstoff</b><br><span class="muted small">Was gemacht wurde und was geplant ist – ${topicsOf(c).length} Einträge</span></span><span>›</span></button>` : ''}
     ${c ? `<button data-a="go" data-v="lists"><span><b>Listen</b><br><span class="muted small">Abhaken: Abgaben, Zahlungen, Rückgaben – ${listsOf(c).filter(l => !l.archived).length} aktiv</span></span><span>›</span></button>` : ''}
-    ${c ? `<button data-a="go" data-v="journal"><span><b>Beobachtungen</b><br><span class="muted small">Alle Notizen der Lerngruppe, nach Schlagwort filterbar</span></span><span>›</span></button>` : ''}
+    ${c ? `<button data-a="go" data-v="journal"><span><b>Beobachtungen</b><br><span class="muted small">Alle Notizen der Lerngruppe, nach Schlagwort filterbar</span></span><span>›</span></button>` : ''}` : ''}
     ${c && usesUnits(c) ? `<button data-a="unitedit"><span><b>Sportarten und Gewichtung</b><br><span class="muted small">Teilbereiche wie Technik oder Spiel – ${unitsOf(c).length} Sportarten</span></span><span>›</span></button>` : ''}
     <button data-a="go" data-v="classes"><span><b>Lerngruppen</b><br><span class="muted small">Anlegen, Schuljahr, neues Halbjahr, Archiv</span></span><span>›</span></button>
     ${c ? `<button data-a="go" data-v="students"><span><b>Schülerliste</b><br><span class="muted small">Importieren per Foto, PDF oder Text, sortieren, Stammdaten</span></span><span>›</span></button>` : ''}
@@ -2092,7 +2110,7 @@ function mehrHTML(c) {
     <button data-a="go" data-v="data"><span><b>Daten und Sicherheit</b><br><span class="muted small">Backup, Export CSV/PDF, Passwort, Sperre</span></span><span>›</span></button>
   </div>`;
 }
-const back = `<button class="btn ghost sm" data-a="go" data-v="">‹ Mehr</button>`;
+const back = `<button class="btn ghost sm zurueckmehr" data-a="go" data-v="">‹ Mehr</button>`;
 function classesHTML() {
   const act = S.classes.filter(k => !k.archived), arc = S.classes.filter(k => k.archived);
   const item = k => `<button data-a="editcls" data-id="${k.id}"><span><b>${esc(k.name)}</b><br><span class="muted small">${subjName(k.subject)}, ${k.level === 'sek2' ? 'Sek II' : 'Sek I'}, ${esc(k.year)}, ${k.term}. Hj., ${k.students.length} Pers.</span></span><span>›</span></button>`;
@@ -2155,8 +2173,8 @@ function listBtns(c, sid) {
 function listPickHTML(c) {
   const act = listsOf(c).filter(l => !l.archived), n = c.students.length;
   return sheet('Liste zum Abhaken wählen', act.length ? `<div class="list">${act.map(l => `<button data-a="listsel" data-v="${l.id}"><span><b>${esc(l.title)}</b><br><span class="small muted">${doneCount(c, l)} von ${n} erledigt${l.due ? ' · Frist ' + fmtDate(l.due) : ''}</span></span><span>›</span></button>`).join('')}</div>
-    <div class="spread" style="margin-top:12px"><button class="btn" data-a="newlist">+ Neue Liste</button>${activeList(c) ? '<button class="btn" data-a="listsel" data-v="">Abhak-Modus beenden</button>' : '<button class="btn" data-a="close">Abbrechen</button>'}</div>`
-    : `<p class="muted">Noch keine aktive Liste in dieser Lerngruppe.</p><div class="spread"><button class="btn" data-a="close">Abbrechen</button><button class="btn primary" data-a="newlist">+ Neue Liste</button></div>`);
+    <div class="spread" style="margin-top:12px"><span class="row"><button class="btn" data-a="newlist">+ Neue Liste</button><button class="btn ghost" data-a="go" data-v="lists">Listen verwalten</button></span>${activeList(c) ? '<button class="btn" data-a="listsel" data-v="">Abhak-Modus beenden</button>' : '<button class="btn" data-a="close">Abbrechen</button>'}</div>`
+    : `<p class="muted">Noch keine aktive Liste in dieser Lerngruppe.</p><div class="spread"><span class="row"><button class="btn" data-a="close">Abbrechen</button>${listsOf(c).length ? '<button class="btn ghost" data-a="go" data-v="lists">Archiv</button>' : ''}</span><button class="btn primary" data-a="newlist">+ Neue Liste</button></div>`);
 }
 function listFormHTML(c, m) {
   const l = m.id ? listById(c, m.id) : null;
@@ -2171,21 +2189,24 @@ const topicsOf = c => (c.topics = c.topics || []);
 const topicOf = (c, d) => topicsOf(c).find(t => t.date === d);
 function lastPlan(c, d) { return [...topicsOf(c)].filter(t => t.date < d && (t.plan || '').trim()).sort((a, b) => b.date.localeCompare(a.date))[0] || null; }
 function topicFormHTML(c, m) {
-  const prev = lastPlan(c, m.date), hist = [...topicsOf(c)].sort((a, b) => b.date.localeCompare(a.date)).filter(t => t.date !== m.date).slice(0, 5);
-  return sheet(`Lehrstoff ${esc(c.name)}`, `<div class="stack">
+  const prev = lastPlan(c, m.date), hist = [...topicsOf(c)].sort((a, b) => b.date.localeCompare(a.date)).filter(t => t.date !== m.date).slice(0, 8);
+  const eingabe = `<div class="stack">
     <div><label class="f">Datum</label><input class="in" type="date" id="tpdate" data-c="tpdate" value="${m.date}" style="width:auto"></div>
     ${prev ? `<div class="planhint"><span class="small muted">Geplant am ${fmtDate(prev.date)}:</span><div style="white-space:pre-wrap">${esc(prev.plan)}</div>${(m.done || '').trim() ? '' : '<button class="btn sm" data-a="tptake" style="margin-top:6px">Als „Gemacht“ übernehmen</button>'}</div>` : ''}
     <div><div class="tplab"><label class="f" for="tpdone">Gemacht</label></div><textarea class="in tparea" id="tpdone" data-c="tpin" placeholder="Thema, Inhalte, Methoden, Hausaufgabe …">${esc(m.done || '')}</textarea></div>
     <div><div class="tplab"><label class="f" for="tpplan">Geplant / nächste Stunde</label></div><textarea class="in tparea" id="tpplan" data-c="tpin" placeholder="Was als Nächstes kommt …">${esc(m.plan || '')}</textarea></div>
     <p class="small muted" style="margin:0">Diktieren: das Mikrofon der Bildschirmtastatur nutzen. Keine Schülernamen einsprechen – die Spracherkennung läuft je nach Gerät über Apple-/Google-Server.</p>
     <div class="spread">${topicOf(c, m.date) ? '<button class="btn danger" data-a="tpdel">Löschen</button>' : '<span></span>'}<span class="row"><button class="btn" data-a="tpclose">Abbrechen</button><button class="btn primary" data-a="tpsave">Speichern</button></span></div>
-    ${hist.length ? `<details><summary class="small">Frühere Stunden</summary>${hist.map(t => `<button class="tpcard" data-a="tpopen" data-v="${t.date}"><b class="small">${fmtDate(t.date)}</b>${t.done ? `<p class="small">${esc(t.done)}</p>` : ''}${t.plan ? `<p class="small muted">Geplant: ${esc(t.plan)}</p>` : ''}</button>`).join('')}</details>` : ''}
-  </div>`);
+  </div>`;
+  // Letzte Stunden der Lerngruppe: Antippen öffnet den Eintrag dieses Tages
+  const letzte = `<section class="tpletzte" aria-label="Letzte Stunden"><div class="spread"><b class="small">Letzte Stunden</b><button class="btn ghost sm" data-a="go" data-v="topics">Alle Einträge ›</button></div>
+    ${hist.length ? hist.map(t => `<button class="tpcard" data-a="tpopen" data-v="${t.date}"><b class="small">${fmtDate(t.date)}</b>${t.done ? `<p class="small">${esc(t.done)}</p>` : ''}${t.plan ? `<p class="small muted">Geplant: ${esc(t.plan)}</p>` : ''}</button>`).join('') : '<p class="small muted">Noch keine früheren Einträge.</p>'}</section>`;
+  return sheet(`Lehrstoff ${esc(c.name)}`, `<div class="tpgrid">${eingabe}${letzte}</div>`, dev() !== 'phone');
 }
 function topicsHTML(c) {
   const ts = [...topicsOf(c)].sort((a, b) => b.date.localeCompare(a.date));
   return `${back}<div class="spread"><h1>Lehrstoff ${esc(c.name)}</h1><span class="row"><button class="btn sm" data-a="tpcopy" ${ts.length ? '' : 'disabled'}>Als Text kopieren</button><button class="btn primary sm" data-a="topic">+ Eintrag</button></span></div>
-    ${ts.length ? ts.map(t => `<button class="tpcard card" data-a="tpopen" data-v="${t.date}"><b>${fmtDate(t.date)}</b>${t.done ? `<p>${esc(t.done)}</p>` : ''}${t.plan ? `<p class="small muted">Geplant: ${esc(t.plan)}</p>` : ''}</button>`).join('') : '<p class="muted">Noch kein Lehrstoff eingetragen. Eintragen geht im Sitzplan (📖 Lehrstoff) oder in der Liste.</p>'}`;
+    ${ts.length ? ts.map(t => `<button class="tpcard card" data-a="tpopen" data-v="${t.date}"><b>${fmtDate(t.date)}</b>${t.done ? `<p>${esc(t.done)}</p>` : ''}${t.plan ? `<p class="small muted">Geplant: ${esc(t.plan)}</p>` : ''}</button>`).join('') : '<p class="muted">Noch kein Lehrstoff erfasst. Erfassen geht in der Klasse über 📖 Lehrstoff.</p>'}`;
 }
 // ---------- Arbeits- und Sozialverhalten (Sek I) ----------
 // Startkatalog nach „Hinweise zur Bewertung des Arbeits- und Sozialverhaltens“; unter Mehr → AV/SV → Kriterien bearbeitbar
@@ -3338,6 +3359,19 @@ function slotInfo(key, par) {
   return { k, special: !!sp, differs: !!(tt[key + '@g'] || tt[key + '@u']) };
 }
 function slotClass(key, par = curPar()) { return slotInfo(key, par).k; }
+// Stunde dieser Lerngruppe heute laut Plan vorbei (und keine ihrer Stunden läuft gerade), aber noch kein Lehrstoff „Gemacht“
+function stundeVorbeiOhneLehrstoff(c) {
+  if (!c) return false;
+  const { day, min } = nowInfo(); if (day < 0) return false;
+  const t = topicOf(c, today()); if (t && (t.done || '').trim()) return false;
+  let vorbei = false, laeuft = false;
+  (S.settings.periods || []).forEach((p, i) => {
+    const k = slotClass(DAYS[day] + '-' + i); if (!k || k.id !== c.id) return;
+    if (min >= toMin(p.to)) vorbei = true; else if (min >= toMin(p.from)) laeuft = true;
+  });
+  return vorbei && !laeuft;
+}
+const hinweisEndeHTML = (c, cl) => stundeVorbeiOhneLehrstoff(c) ? `<button class="kshinweis ${cl || ''}" data-a="topic">📖 Lehrstoff noch nicht erfasst<small>Antippen zum Erfassen</small></button>` : '';
 function currentSlots() {
   const { day, min } = nowInfo(); if (day < 0) return {};
   const P = S.settings.periods; let cur = null, next = null;
@@ -3402,7 +3436,7 @@ function planGridHTML() {
       ${scope !== 'all' ? `<p class="small muted" style="margin:0">Der Plan zeigt jetzt die ${PARNAME[scope]} Woche. Einträge hier überschreiben „Jede Woche“ nur in dieser Woche. Radiergummi macht die Stunde nur in dieser Woche frei.</p>` : ''}
       <div class="row">${act.map(k => `<button class="chip s-${k.subject}" data-a="brush" data-id="${k.id}" aria-pressed="${UI.planBrush === k.id}">${esc(k.name)}</button>`).join('')}
         <button class="chip" data-a="brush" data-id="__clear" aria-pressed="${UI.planBrush === '__clear'}">Radiergummi</button></div>
-      <label class="row small"><input type="checkbox" data-c="planseat" ${S.settings.startList ? 'checked' : ''}> Beim Öffnen einer Stunde zuerst die Liste statt des Sitzplans zeigen</label></div>` : ''}
+      <label class="row small"><input type="checkbox" data-c="planseat" ${S.settings.startList ? 'checked' : ''}> Beim Öffnen einer Stunde zuerst die Namen statt des Sitzplans zeigen</label></div>` : ''}
     <div class="tw"><div class="plan ${edit ? 'editing' : ''}">${head}${rows}</div></div>
     ${!edit ? '<p class="muted small" style="margin-top:10px">Doppelstunde antippen öffnet die Lerngruppe. G/U kennzeichnet Stunden, die nach gerader und ungerader Kalenderwoche wechseln. Zuordnen und Zeiten ändern über „Bearbeiten“.</p>' : ''}`;
 }
@@ -3489,7 +3523,7 @@ function moveCatHTML(c, m) {
 function bulkHTML(c, m) {
   if (m.unit === undefined) { const u = usesUnits(c) && !m.cat ? curUnit(c) : null; m.unit = u ? u.id : ''; const sb = defSub(u); m.sub = sb ? sb.id : null; }
   const bu = m.unit ? unitById(c, m.unit) : null, vals = m.vals || {};
-  return sheet('Gruppe eintragen', `<div class="stack">
+  return sheet('Note für Gruppe', `<div class="stack">
     <p class="small muted" style="margin:0">Eine Note pro Person für dieselbe Sache – z. B. Badminton Spiel heute oder eine alte Aufzeichnung. Leere Felder werden übersprungen.</p>
     <div class="grid2">
       <div><label class="f">Datum</label><input class="in" type="date" id="bkdate" value="${m.date || today()}"></div>
