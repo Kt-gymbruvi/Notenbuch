@@ -4,6 +4,14 @@ Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unte
 Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
 Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
+## Neue Bedienung – Etappe 1: gemeinsamer Einstieg (gebaut 15.11.2026, nicht veröffentlicht)
+Konzept: `docs/KONZEPT-bedienung.md`.
+- `UI.seatMode` heißt jetzt `UI.modus` (Aktion `modus` statt `seatmode`); Sitzplan und Namensliste lesen denselben Zustand.
+- Stundenplan und Lerngruppenwahl öffnen die Klasse gleich (`klasseOeffnen`). In Noten, Fehlzeiten, Arbeiten, Sport und Mehr wechselt die Lerngruppenwahl nur die Gruppe und bleibt in der Ansicht.
+- Start mit **Anwesenheit**. Ist sie heute schon erfasst (Eintrag vorhanden oder „Alle da“ bestätigt), Start mit Mitarbeit.
+- Sitzplan, Modus Anwesend: rechts „Alle da, weiter“ bzw. „Fertig, weiter“ → schaltet auf Mitarbeit. Die Bestätigung merkt sich nur das Gerät (`localStorage` `nb_anw_ok`, nur Lerngruppen-Kennung und Datum), weil „alle anwesend“ im Tresor keinen Eintrag erzeugt. Tresorformat unverändert. „Alle anwesend“ unter Fehlzeiten zählt auch als Bestätigung.
+- Geprüft in der Vorschau (PC, hell, Testdaten): Plan → Anwesenheit; „Alle da, weiter“ → Mitarbeit; erneutes Öffnen → Mitarbeit; andere Gruppe → Anwesenheit; Tisch antippen → „Fertig, weiter“; Lerngruppenwahl aus Erfassen öffnet wie der Plan, aus Noten bleibt Noten. Keine Konsolenfehler. **Nicht geprüft:** iPad, Handy, dunkel; auf einem zweiten Gerät startet eine schon bestätigte Gruppe wieder mit Anwesenheit (gewollt einfach gehalten).
+
 ## Ein Passwort für Notenbuch, Tafel und Startseite (Tafel-SPEC Etappe B, gebaut 14.11.2026, nicht veröffentlicht)
 - Gemeinsamer Schlüsselbund (`BUND` in `index.html`): Mit Anmeldung wird das Passwort beim Entsperren, Anlegen, Backup-Übernehmen und Passwortändern als nicht exportierbarer Grundschlüssel abgelegt; beim nächsten Öffnen (auch nach Eingabe in Tafel oder Startseite) öffnet das Notenbuch ohne Rückfrage („Wird geöffnet …“).
 - Keine Zeitsperre mehr; „Sperren“ / „Auf diesem Gerät sperren“ löschen den Bund. Abmelden hier, Abmelden in einem anderen Tab oder einer anderen Anwendung (gemeinsame Anmeldung fehlt) löschen ihn ebenfalls; ein von woanders abgemeldetes, offenes Notenbuch sperrt sich.

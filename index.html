@@ -841,7 +841,7 @@ const daysSince = s => s ? Math.floor((new Date(today()) - new Date(s)) / 864e5)
 
 let S = null;            // entschlüsselter Zustand
 let KEY = null, SALT = null;
-const UI = { view: 'plan', planEdit: false, planBrush: null, drag: null, sub: null, modal: null, cls: null, examId: null, tableId: null, seatMode: 'noten', listMode: 'sitz',
+const UI = { view: 'plan', planEdit: false, planBrush: null, drag: null, sub: null, modal: null, cls: null, examId: null, tableId: null, modus: 'anw', listMode: 'sitz',
   attDate: null, measure: {}, measureDisc: '', measureDate: null, sportSeg: 'messen', toast: null, sync: 'local', lockMsg: '' };
 
 const ICON = {
@@ -1528,6 +1528,24 @@ function erfassenHTML(c) {
     </button>`; }).join('')}</div>`;
 }
 const seatDay = () => UI.seatDate || today();
+// Gemeinsamer Einstieg in eine Lerngruppe (Stundenplan und Lerngruppenwahl): immer dieselbe Klassenansicht.
+// Start mit Anwesenheit; ist sie heute schon erfasst (Einträge oder „Alle da“ bestätigt), mit Mitarbeit.
+// „Alle da“ speichert im Tresor nichts (alle anwesend = kein Eintrag), darum merkt sich das Gerät die Bestätigung.
+const ANW_KEY = 'nb_anw_ok';   // nur lokal je Gerät: { Lerngruppen-Kennung: Datum }, keine Namen
+const anwBestaetigt = c => ((lsGet(ANW_KEY) || {})[c.id]) === today();
+function anwMerken(c, d) {
+  if (d !== today()) return;
+  const m = lsGet(ANW_KEY) || {}; Object.keys(m).forEach(k => { if (m[k] !== d) delete m[k]; });
+  m[c.id] = d; lsSet(ANW_KEY, m);
+}
+const anwErfasst = c => !!(c.att[today()] && Object.keys(c.att[today()]).length) || anwBestaetigt(c);
+const startModus = c => anwErfasst(c) ? 'noten' : 'anw';
+function klasseOeffnen(k) {
+  UI.cls = k.id; S.lastCls = k.id; UI.view = 'erfassen'; UI.sub = null; UI.modal = null; UI.pick = null; UI.listSel = null;
+  const sitz = !S.settings.startList && dev() !== 'phone'; UI.listMode = sitz ? 'sitz' : 'kacheln'; if (sitz) toggleNativeFull(true);
+  UI.modus = startModus(k); UI.seatDate = null; UI.seatRange = 'tag'; UI.examId = null; UI.measure = {};
+  save(); render(); window.scrollTo(0, 0);
+}
 const mitCat = c => (c.cats.find(k => k.id === 'mit') || c.cats[c.cats.length - 1]).id;
 function shiftDate(d, n) { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + pad2(x.getMonth() + 1) + '-' + pad2(x.getDate()); }
 // Mitarbeitsnoten im gewählten Zeitraum (Tag, 4 Wochen, bis zum Datum)
@@ -1543,7 +1561,7 @@ function gradeBucket(avg, level) {
 const MQ = { sek1: [[1, 14], [2, 11], [3, 8], [4, 5], [5, 2], [6, 0]], sek2: [[14, 14], [11, 11], [8, 8], [5, 5], [2, 2], [0, 0]] };
 const isGroups = c => c.seats && c.seats.layout === 'groups';
 function desksHTML(c, att, H) {
-  const edit = UI.seatMode === 'edit', mq = UI.seatMode === 'noten', grp = isGroups(c);
+  const edit = UI.modus === 'edit', mq = UI.modus === 'noten', grp = isGroups(c);
   const list = grp ? sorted(c).filter(s => c.seats.slot[s.id]) : sorted(c);
   return list.map(s => {
     const st = att[s.id];
@@ -1554,11 +1572,11 @@ function desksHTML(c, att, H) {
     if (edit && grp) return `<div class="desk gdesk ${UI.gsel === s.id ? 'gsel' : ''}" data-gdrag="${s.id}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span></div>`;
     if (edit) return `<div class="desk drag" data-drag="${s.id}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span></div>`;
     const LA = activeList(c);
-    if (LA && UI.seatMode !== 'edit') { const d = (LA.done || {})[s.id];
+    if (LA && UI.modus !== 'edit') { const d = (LA.done || {})[s.id];
       return `<div class="desk ${d ? 'ldone' : ''} ${st === 'e' || st === 'u' ? 'absent' : ''}" role="button" tabindex="0" data-a="lcheck" data-v="${LA.id}" data-id="${s.id}" aria-pressed="${!!d}" aria-label="${esc(nameOf(s, c))}: ${d ? 'erledigt' : 'offen'}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span><span class="st badge ${d ? 'lok' : 'mk'}">${d ? '✓' : 'offen'}</span></div>`; }
-    if (UI.seatMode === 'avsv' && c.level === 'sek1') { const k = avsvOf(c).filter(x => x.sid === s.id && x.date === seatDay()).length;
+    if (UI.modus === 'avsv' && c.level === 'sek1') { const k = avsvOf(c).filter(x => x.sid === s.id && x.date === seatDay()).length;
       return `<div class="desk ${st === 'e' || st === 'u' ? 'absent' : ''}" role="button" tabindex="0" data-a="seat" data-id="${s.id}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span>${k ? `<span class="st badge nt">★${k}</span>` : ''}</div>`; }
-    if (UI.seatMode === 'verg') { const t = curMT(c), on = hasMark(c, s.id, seatDay(), t), k = markCount(c, s.id, t);
+    if (UI.modus === 'verg') { const t = curMT(c), on = hasMark(c, s.id, seatDay(), t), k = markCount(c, s.id, t);
       return `<div class="desk ${on ? 'marked' : ''} ${st === 'e' || st === 'u' ? 'absent' : ''}" role="button" tabindex="0" data-a="seat" data-id="${s.id}" aria-pressed="${on}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span>${on && isPart(t) ? `<span class="st badge mk">${markState(c, s.id, seatDay(), t) === 'u' ? 'U' : 'E'}</span>` : k ? `<span class="st badge mk">${k}</span>` : ''}</div>`; }
     if (!mq) return `<div class="desk ${st === 'e' || st === 'u' ? 'absent' : ''} ${UI.randSid === s.id ? 'picked' : ''}" role="button" tabindex="0" data-a="seat" data-id="${s.id}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span>${stB}${listBadge(c, s.id, 'lbadge')}</div>`;
     const lst = mitIn(c, s.id); const avg = C.average(lst, c.level); const g = gradeBucket(avg, c.level);
@@ -1588,7 +1606,7 @@ function groupGeom(c, Hd) {
   return { tables, slots, sw };
 }
 function groupRoomHTML(c, att) {
-  const edit = UI.seatMode === 'edit', g = c.seats.g || { cols: 2, rows: 3 };
+  const edit = UI.modus === 'edit', g = c.seats.g || { cols: 2, rows: 3 };
   const tables = Array.from({ length: g.cols * g.rows }, (_, t) => `<div class="gtable" data-t="${t}"><span>${t + 1}</span></div>`).join('');
   const taken = new Set(Object.values(c.seats.slot));
   const slots = groupSlots(c).map(k => `<div class="gslot ${taken.has(k) ? 'taken' : ''} ${edit ? 'editable' : ''}" data-gs="${k}" ${edit ? 'data-a="gslot"' : ''}></div>`).join('');
@@ -1629,18 +1647,18 @@ function seatsHTML(c, att) {
 function fsSeatsHTML(c) {
   ensureSeats(c);
   const att = c.att[seatDay()] || {}, H = roomHeight(c);
-  const edit = UI.seatMode === 'edit', mq = UI.seatMode === 'noten', d = seatDay(), isToday = d === today(), range = UI.seatRange || 'tag';
+  const edit = UI.modus === 'edit', mq = UI.modus === 'noten', d = seatDay(), isToday = d === today(), range = UI.seatRange || 'tag';
   const side = (a, v, label, icon, pressed, extra = '') => `<button class="fsb" data-a="${a}" ${v != null ? `data-v="${v}"` : ''} ${pressed != null ? `aria-pressed="${pressed}"` : ''} ${extra}><span class="ic">${icon}</span><span>${label}</span></button>`;
   const left = `<aside class="fsl" aria-label="Modus">
       <div class="fsname" title="${esc(c.name)}">${esc(c.name)}</div>
-      ${side('seatmode', 'noten', 'Mitarbeit', '✎', mq)}
-      ${side('seatmode', 'anw', 'Anwesend', '✓', UI.seatMode === 'anw')}
-      ${side('seatmode', 'verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen', '!', UI.seatMode === 'verg')}
-      ${c.level === 'sek1' ? side('seatmode', 'avsv', 'AV/SV', '★', UI.seatMode === 'avsv') : ''}
+      ${side('modus', 'noten', 'Mitarbeit', '✎', mq)}
+      ${side('modus', 'anw', 'Anwesend', '✓', UI.modus === 'anw')}
+      ${side('modus', 'verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen', '!', UI.modus === 'verg')}
+      ${c.level === 'sek1' ? side('modus', 'avsv', 'AV/SV', '★', UI.modus === 'avsv') : ''}
       ${side('rand', null, 'Zufall', '🎲')}
-      ${side('seatmode', 'liste', 'Listen', '📋', UI.seatMode === 'liste')}
+      ${side('modus', 'liste', 'Listen', '📋', UI.modus === 'liste')}
       ${side('topic', null, 'Lehrstoff', '📖', null, 'aria-label="Lehrstoff dieser Stunde"')}
-      ${side('seatmode', 'edit', 'Tische', '⇄', edit)}
+      ${side('modus', 'edit', 'Tische', '⇄', edit)}
       ${edit ? side('seatreset', null, isGroups(c) ? 'Alle verteilen' : 'Neu ordnen', '↺') : ''}
       <span class="fsgrow"></span>
       ${side('toplan', null, 'Stunden­plan', '🗓', null, 'aria-label="Zurück zum Stundenplan"')}
@@ -1665,13 +1683,15 @@ function fsSeatsHTML(c) {
       ${side('seatday', null, 'Später', '›', null, 'data-d="1"')}
       ${isToday ? '' : side('seatday', null, 'Heute', '●', null, 'data-d="0"')}
       ${mq ? `<span class="fssep"></span>${[['tag', 'Tag'], ['4w', '4 Wo.'], ['hj', 'Bis dahin']].map(([k, t]) => side('seatrange', k, t, k === 'tag' ? '1' : k === '4w' ? '4' : '∑', range === k)).join('')}` : ''}
-      ${UI.seatMode === 'verg' ? `<span class="fssep"></span>${allMarkTypes(c).map(t => side('marktype', t, MARK[t][2], MARK[t][0], curMT(c) === t)).join('')}<p class="small muted" style="margin:0">Tisch antippen = markieren/entfernen. Zahl = Anzahl im Halbjahr.${isPart(curMT(c)) ? ' Verletzt/Erkrankt: 1× = entschuldigt (E), 2× = unentschuldigt (U), 3× = entfernen.' : ''}</p>` : ''}
-      ${UI.seatMode === 'avsv' ? '<span class="fssep"></span><p class="small muted" style="margin:0">Tisch antippen: Arbeits- oder Sozialverhalten eintragen. Zahl = Einträge an diesem Tag. Nur Auffälliges, sonst gilt C.</p>' : ''}
-      ${UI.seatMode === 'liste' ? (() => { const act = listsOf(c).filter(l => !l.archived), L = activeList(c);
+      ${UI.modus === 'verg' ? `<span class="fssep"></span>${allMarkTypes(c).map(t => side('marktype', t, MARK[t][2], MARK[t][0], curMT(c) === t)).join('')}<p class="small muted" style="margin:0">Tisch antippen = markieren/entfernen. Zahl = Anzahl im Halbjahr.${isPart(curMT(c)) ? ' Verletzt/Erkrankt: 1× = entschuldigt (E), 2× = unentschuldigt (U), 3× = entfernen.' : ''}</p>` : ''}
+      ${UI.modus === 'anw' ? (() => { const n = Object.keys(att).length;
+        return `<span class="fssep"></span>${side('alleda', null, n ? 'Fertig, weiter' : 'Alle da, weiter', '→', null, 'aria-label="Anwesenheit bestätigen, weiter zur Mitarbeit"')}<p class="small muted" style="margin:0">${n ? `${n} vermerkt.` : 'Alle anwesend?'} Tisch antippen: E → U → V → da.</p>`; })() : ''}
+      ${UI.modus === 'avsv' ? '<span class="fssep"></span><p class="small muted" style="margin:0">Tisch antippen: Arbeits- oder Sozialverhalten eintragen. Zahl = Einträge an diesem Tag. Nur Auffälliges, sonst gilt C.</p>' : ''}
+      ${UI.modus === 'liste' ? (() => { const act = listsOf(c).filter(l => !l.archived), L = activeList(c);
         return `<span class="fssep"></span>${act.length ? act.map(l => side('listsel', l.id, esc(l.title.length > 16 ? l.title.slice(0, 15) + '…' : l.title), '📋', UI.listSel === l.id, `title="${esc(l.title)}"`)).join('') + (L ? `<p class="small" style="margin:0"><b>${doneCount(c, L)} von ${c.students.length}</b> erledigt</p>` : '') : '<p class="small muted" style="margin:0">Keine aktive Liste. Anlegen unter Mehr → Listen.</p>'}`; })() : ''}
     </aside>`;
   const inner = grp ? groupRoomHTML(c, att) : desksHTML(c, att, H);
-  const warn = grp && !edit && unseated.length ? `<button class="fswarn" data-a="seatmode" data-v="edit">${unseated.length} ohne Platz – zuordnen</button>` : '';
+  const warn = grp && !edit && unseated.length ? `<button class="fswarn" data-a="modus" data-v="edit">${unseated.length} ohne Platz – zuordnen</button>` : '';
   const pk = UI.pick && stu(c, UI.pick);
   const pop = pk && mq ? `<div id="pickpop" class="pickpop" role="dialog" aria-label="Note für ${esc(nameOf(pk, c))}">
       <div class="pphead"><b>${esc(pk.first || pk.last)}</b><span>${esc(pk.first ? pk.last : '')}</span><button class="x" data-a="pickclose" aria-label="Schließen">×</button></div>
@@ -2517,16 +2537,19 @@ const A = {
   tab: el => { if (el.dataset.v === 'plan' && UI.view !== 'plan') UI.weekOff = 0; UI.view = el.dataset.v; UI.sub = null; UI.examId = null; UI.tableId = null; UI.modal = null; render(); window.scrollTo(0, 0); },
   go: el => { UI.view = 'mehr'; UI.sub = el.dataset.v || null; UI.snaps = undefined; UI.snapPrev = null; UI.tableId = null; UI.modal = null; render(); window.scrollTo(0, 0); },
   pickcls: () => openModal({ type: 'pickcls' }),
-  setcls: el => { UI.cls = el.dataset.id; S.lastCls = UI.cls; UI.modal = null; UI.examId = null; UI.measure = {}; save(); render(); },
+  // In Auswertungen und unter Mehr bleibt die Ansicht, sonst öffnet die Lerngruppe wie aus dem Stundenplan
+  setcls: el => { const k = classById(el.dataset.id); if (!k) return;
+    if (['plan', 'erfassen'].includes(UI.view)) return klasseOeffnen(k);
+    UI.cls = k.id; S.lastCls = k.id; UI.modal = null; UI.examId = null; UI.measure = {}; save(); render(); },
   listmode: el => { UI.listMode = el.dataset.v; if (el.dataset.v === 'sitz') toggleNativeFull(true); render(); window.scrollTo(0, 0); },
-  seatmode: el => {
-    UI.seatMode = el.dataset.v; UI.pick = null;
-    if (UI.seatMode === 'liste') { const c = cls(); if (!activeList(c)) { const f = listsOf(c).find(l => !l.archived); UI.listSel = f ? f.id : null; } }
+  modus: el => {
+    UI.modus = el.dataset.v; UI.pick = null;
+    if (UI.modus === 'liste') { const c = cls(); if (!activeList(c)) { const f = listsOf(c).find(l => !l.archived); UI.listSel = f ? f.id : null; } }
     else UI.listSel = null;
     render();
   },
   listpick: () => openModal({ type: 'listpick' }),
-  listsel: el => { UI.listSel = el.dataset.v || null; if (!UI.listSel && UI.seatMode === 'liste') UI.seatMode = 'noten'; UI.modal = null; render(); },
+  listsel: el => { UI.listSel = el.dataset.v || null; if (!UI.listSel && UI.modus === 'liste') UI.modus = 'noten'; UI.modal = null; render(); },
 
   // Lerngruppen
   newcls: () => openModal({ type: 'cls', id: null, subject: 'bio', cats: defaultCats('bio') }),
@@ -2632,7 +2655,8 @@ const A = {
     if (!Object.keys(day).length) delete c.att[d];
     commit();
   },
-  attall: () => { const c = cls(), d = UI.attDate || today(), prev = c.att[d]; delete c.att[d]; commit(); if (prev) { LAST = { cls: c.id, fn: k => { k.att[d] = prev; } }; toast('Alle auf anwesend gesetzt', true); } },
+  alleda: () => { const c = cls(); if (!c) return; anwMerken(c, seatDay()); UI.modus = 'noten'; UI.pick = null; render(); toast('Anwesenheit erfasst – weiter mit Mitarbeit'); },
+  attall: () => { const c = cls(), d = UI.attDate || today(), prev = c.att[d]; delete c.att[d]; anwMerken(c, d); commit(); if (prev) { LAST = { cls: c.id, fn: k => { k.att[d] = prev; } }; toast('Alle auf anwesend gesetzt', true); } },
   mark: el => { const c = cls(); const on = toggleMark(c, el.dataset.id, el.dataset.d, el.dataset.t); commit(); if (UI.modal) renderModal(); const s = stu(c, el.dataset.id); if (s) toast(`${s.first || s.last}: ${markToast(el.dataset.t, on)}`); },
   snapprev: async el => {
     const s = (UI.snaps || []).find(x => x.id === el.dataset.v); if (!s) return;
@@ -2697,7 +2721,7 @@ const A = {
     doc.autoTable({ head: [head], body: m.rows, startY: 21, margin: { left: 8, right: 8 }, styles: { fontSize: 8, cellPadding: 1.2, halign: 'center' }, columnStyles: { 0: { halign: 'left', cellWidth: 42 }, 7: { fontStyle: 'bold' }, 14: { fontStyle: 'bold' } }, headStyles: { fillColor: [20, 40, 75] } });
     if (await offerDownload(`${safeName(c.name)}-avsv-${today()}.pdf`, doc.output('blob'))) toast('PDF gespeichert');
   },
-  safeview: () => { UI.view = 'mehr'; UI.sub = null; UI.modal = null; UI.listSel = null; UI.seatMode = 'noten'; UI.pick = null; render(); },
+  safeview: () => { UI.view = 'mehr'; UI.sub = null; UI.modal = null; UI.listSel = null; UI.modus = 'noten'; UI.pick = null; render(); },
   marktype: el => { UI.markType = el.dataset.v; render(); },
   newlist: () => openModal({ type: 'listform' }),
   editlist: el => openModal({ type: 'listform', id: el.dataset.v }),
@@ -3229,8 +3253,7 @@ Object.assign(A, {
     }
     const k = slotClass(key, par);
     if (!k) { UI.planEdit = true; if (!UI.planBrush) UI.planBrush = (S.classes.find(x => !x.archived) || {}).id; render(); return toast('Bearbeiten: Lerngruppe wählen und Stunde antippen'); }
-    UI.cls = k.id; S.lastCls = k.id; UI.view = 'erfassen'; { const sitz = !S.settings.startList && dev() !== 'phone'; UI.listMode = sitz ? 'sitz' : 'kacheln'; if (sitz) toggleNativeFull(true); } UI.seatMode = 'noten'; UI.seatDate = null; UI.seatRange = 'tag';
-    UI.examId = null; UI.measure = {}; save(); render(); window.scrollTo(0, 0);
+    klasseOeffnen(k);
   },
   seatreset: async () => {
     const c = cls();
@@ -3240,15 +3263,15 @@ Object.assign(A, {
   },
   seat: el => {
     const c = cls(), sid = el.dataset.id; if (!sid || !stu(c, sid)) return;
-    if (UI.seatMode === 'anw') {
+    if (UI.modus === 'anw') {
       const d = seatDay(); const day = c.att[d] = c.att[d] || {};
       const order = [undefined, 'e', 'u', 'v']; const nx = order[(order.indexOf(day[sid]) + 1) % order.length];
       if (nx) day[sid] = nx; else delete day[sid];
       if (!Object.keys(day).length) delete c.att[d];
       return commit();
     }
-    if (UI.seatMode === 'avsv' && c.level === 'sek1') return openModal({ type: 'avsv', sid, date: seatDay(), k: UI.avk || 'av' });
-    if (UI.seatMode === 'verg') { const t = curMT(c), on = toggleMark(c, sid, seatDay(), t), s = stu(c, sid); commit(); return toast(`${s.first || s.last}: ${markToast(t, on)}`); }
+    if (UI.modus === 'avsv' && c.level === 'sek1') return openModal({ type: 'avsv', sid, date: seatDay(), k: UI.avk || 'av' });
+    if (UI.modus === 'verg') { const t = curMT(c), on = toggleMark(c, sid, seatDay(), t), s = stu(c, sid); commit(); return toast(`${s.first || s.last}: ${markToast(t, on)}`); }
     openModal({ type: 'quick', sid, tend: '', date: seatDay() !== today() ? seatDay() : undefined, cat: mitCat(c) });
   }
 });
@@ -3301,7 +3324,7 @@ function bulkHTML(c, m) {
 }
 Object.assign(A, PICK_A, {
   seatfull: () => seatFullToggle(),
-  toplan: () => { toggleNativeFull(false); UI.view = 'plan'; UI.sub = null; UI.modal = null; UI.pick = null; UI.listSel = null; if (UI.seatMode === 'liste') UI.seatMode = 'noten'; render(); window.scrollTo(0, 0); },
+  toplan: () => { toggleNativeFull(false); UI.view = 'plan'; UI.sub = null; UI.modal = null; UI.pick = null; UI.listSel = null; if (UI.modus === 'liste') UI.modus = 'noten'; render(); window.scrollTo(0, 0); },
   mq: el => {
     const c = cls(), sid = el.dataset.id, p = +el.dataset.p, d = seatDay();
     const e = { id: uid(), sid, cat: mitCat(c), p, date: d, label: '', w: 1 };
@@ -3371,7 +3394,7 @@ Object.assign(A, {
 });
 let GD = null; // laufender Zug bei Sechsertischen
 document.addEventListener('pointerdown', e => {
-  const el = e.target.closest('[data-gdrag]'); if (!el || UI.seatMode !== 'edit') return;
+  const el = e.target.closest('[data-gdrag]'); if (!el || UI.modus !== 'edit') return;
   e.preventDefault();
   GD = { el, sid: el.dataset.gdrag, sx: e.clientX, sy: e.clientY, ghost: null };
   try { el.setPointerCapture(e.pointerId); } catch (_) {}
@@ -3410,7 +3433,7 @@ document.addEventListener('pointercancel', () => { if (GD) { if (GD.ghost) GD.gh
 
 // ---------- Tische ziehen ----------
 document.addEventListener('pointerdown', e => {
-  const el = e.target.closest('[data-drag]'); if (!el || UI.seatMode !== 'edit') return;
+  const el = e.target.closest('[data-drag]'); if (!el || UI.modus !== 'edit') return;
   const c = cls(); const room = $('#room'); if (!c || !room) return;
   const p = c.seats.pos[el.dataset.drag]; if (!p) return;
   e.preventDefault();
