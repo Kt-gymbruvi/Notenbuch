@@ -1253,9 +1253,11 @@ setInterval(() => { if (S && LOCAL && LOCAL.dirty && Sync.db && !Sync.pushing) p
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) doSave(); });
 
 // ---------- Sperre ----------
-// Keine Zeitsperre mehr (seit dem gemeinsamen Schlüsselbund): Gesperrt wird mit „Auf diesem Gerät sperren“ oder durch Abmelden.
+// Bei jedem Öffnen der Seite wird nach dem Passwort gefragt. Kommt die Seite über „Zurück“ aus dem Browser-Zwischenspeicher
+// (noch entsperrt), wird sie sofort gesperrt. Sonst sperren „Sperren“ und Abmelden; eine Zeitsperre gibt es nicht.
 // Die Einstellung settings.autolock bleibt im Tresor stehen (älteres Format), wird aber nicht mehr benutzt.
 async function sperreGeraet() { await BUND.loeschen(); UI.bund = null; await lock(); }
+window.addEventListener('pageshow', e => { if (e.persisted && S) lock(); });
 // Abmelden in einem anderen Tab (z. B. auf der Startseite) entfernt die gemeinsame Anmeldung: dann auch hier sperren
 window.addEventListener('storage', e => { if (e.key === GEMEINSAM && e.newValue === null) { BUND.loeschen(); UI.bund = null; if (S) lock(); } });
 async function lock(skipSave) {
@@ -1384,7 +1386,7 @@ function oeffneMit(key, src, state, basis) {
   namenSchluessel(basis);
   if (UI.postUnlockErr) { toast('Entsperrt, aber beim Vorbereiten trat ein Fehler auf – bitte Screenshot unter Mehr'); }
 }
-// Beim Start: liegt der Schlüsselbund vor (Passwort schon in Tafel, Startseite oder hier eingegeben), ohne Rückfrage öffnen
+// Wird nicht mehr benutzt (das Notenbuch fragt bei jedem Öffnen nach dem Passwort); bleibt für eine mögliche Rückkehr stehen
 async function oeffneMitBund() {
   const bund = UI.bund; if (!bund || S) return false;
   try {
@@ -2431,7 +2433,7 @@ function dataHTML(c) {
   ${c ? `<h2>Export ${esc(c.name)}</h2><div class="card stack"><p class="small">Unverschlüsselte Notenliste – nur auf dienstlich zugelassenen Geräten speichern.</p>
     <div class="row"><button class="btn" data-a="csv">Notenliste als CSV</button><button class="btn" data-a="pdf">Notenliste als PDF</button></div></div>` : ''}
   <h2>Sperre und Passwort</h2><div class="card stack">
-    <p class="small" style="margin:0">${Sync.db ? 'Einmal je Gerät eingegeben, öffnet das Passwort Notenbuch, Tafel und Startseite ohne erneute Rückfrage. Gespeichert wird dafür nur ein nicht auslesbarer Schlüssel auf diesem Gerät, nie das Passwort. „Auf diesem Gerät sperren“ oder Abmelden löscht ihn.' : 'Ohne Anmeldung fragt das Notenbuch bei jedem Öffnen nach dem Passwort.'}</p>
+    <p class="small" style="margin:0">${Sync.db ? 'Das Notenbuch fragt bei jedem Öffnen nach dem Passwort. Tafel und „Meine Klassen“ öffnen sich nach einmaliger Eingabe je Gerät ohne Rückfrage; dafür liegt nur ein nicht auslesbarer Schlüssel auf diesem Gerät, nie das Passwort. „Auf diesem Gerät sperren“ oder Abmelden löscht ihn.' : 'Ohne Anmeldung fragt das Notenbuch bei jedem Öffnen nach dem Passwort.'}</p>
     <div class="row"><button class="btn" data-a="chpw">Passwort ändern</button><button class="btn" data-a="lock">Auf diesem Gerät sperren</button></div>
   </div>
   <h2>Datenschutz</h2><div class="hint small">Für die Verarbeitung von Schülerdaten auf privaten Geräten brauchst du in Niedersachsen eine Genehmigung der Schulleitung. Prüfe außerdem mit deiner Schule, ob die verschlüsselte Synchronisation über die Plattform-Datenbank (Supabase, Serverstandort Frankfurt; dort liegen nur verschlüsselte Daten) zulässig ist. Texterkennung (Foto) und PDF-Auslesen laufen auf dem Gerät; Bilder und Texte werden nicht hochgeladen.</div>`;
@@ -3346,11 +3348,10 @@ document.addEventListener('keydown', e => {
 (async function start() {
   if (!sitzungDa()) await BUND.loeschen();       // abgemeldet (auch in einer anderen Anwendung): Bund weg
   UI.bund = await BUND.laden();
-  UI.bundOeffnet = !!(UI.bund && LOCAL);         // mit Bund und Daten auf dem Gerät gleich „Wird geöffnet …“
+  // Kein Öffnen mit dem Schlüsselbund mehr: Das Notenbuch fragt bei jedem Öffnen nach dem Passwort (damit niemand
+  // an einem unbeaufsichtigten Gerät hineinkommt). Den Bund nutzen weiterhin Tafel und „Meine Klassen“.
   renderLock();
   await initSync();
-  if (!S && UI.bund && vaultExists()) { UI.bundOeffnet = true; renderLock(); await oeffneMitBund(); }
-  UI.bundOeffnet = false;
   if (!S) renderLock();
 })();
 

@@ -1,5 +1,11 @@
 # Entscheidungen – Notenbuch
 
+## 2026-11-15 – Passwort bei jedem Öffnen (Wunsch der Lehrkraft)
+- **Das Notenbuch öffnet nicht mehr mit dem Schlüsselbund**, sondern fragt bei jedem Laden der Seite nach dem Passwort. Grund: Ein unbeaufsichtigtes, angemeldetes Gerät (z. B. am Pult) soll Schülerinnen und Schülern keinen Zugriff auf Noten geben.
+- Kommt die Seite über „Zurück“ noch entsperrt aus dem Browser-Zwischenspeicher, sperrt sie sich sofort (`pageshow` mit `persisted`).
+- Der Bund wird weiterhin angelegt (beim Entsperren usw.), damit Tafel und „Meine Klassen“ ohne Rückfrage öffnen – dort stehen nur Namen, keine Noten. `oeffneMitBund()` bleibt ungenutzt stehen.
+- Verworfen (vorerst): Zeitsperre bei Untätigkeit – erst auf Wunsch.
+
 ## 2026-11-15 – Arbeiten unter Erfassen (Wunsch der Lehrkraft)
 - Arbeiten und Tests werden dort bepunktet, also erfasst: in der Spalte unter Erfassen (nach „Note für Gruppe“), auf dem Handy als fünfter Knopf der Werkzeugreihe im Reiter Klasse. Im Überblick steht es nicht mehr.
 
