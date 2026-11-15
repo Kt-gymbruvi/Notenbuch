@@ -4,6 +4,15 @@ Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unte
 Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
 Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
+## Neue Bedienung – Etappe 3: feste linke Spalte (gebaut 15.11.2026, nicht veröffentlicht)
+- iPad/PC in einer Klasse (Erfassen, Noten, Fehlzeiten, Arbeiten, Sport): nur noch die linke Spalte `klassenSpalteHTML` – Kopf (Lerngruppe wechseln) · Unterricht (Lehrstoff, Zufall, Liste mit Zähler) · Erfassen (Anwesenheit, Mitarbeit, AV/SV, Vergessen/Vermerke, Note für Gruppe) · Überblick (Noten, Fehlzeiten, Arbeiten, Sport) · Sync-Anzeige, Stundenplan, Mehr. Keine Kopfzeile, keine Navigation; Sitzplan auf iPad und PC gleich.
+- Ein Modus aus Noten usw. springt zurück zur Erfassung (Sitzplan oder Namen wie zuletzt).
+- Sitzplan: alte Modusspalte entfällt; Kopfzeile über dem Raum mit „Sitzplan | Namen“, aktuellem Modus und „Tische umstellen“ / „Fertig“ (zurück zum vorigen Modus). „Neu ordnen/Alle verteilen“ in der rechten Raum-Spalte. Der Modus „Listen“ entfällt: Liste über die Spalte wählen; solange aktiv, rechts Stand und „Liste beenden“.
+- Namensliste iPad/PC: Werkzeuge und Modi nur in der Spalte, oben nur noch Kontext zum Modus.
+- Außerhalb einer Klasse (Stundenplan, Mehr): Kopfzeile wie bisher (Startseite, Sperren), Navigation nur Plan · zuletzt geöffnete Klasse · Mehr.
+- Handy unverändert (Etappe 6).
+- Geprüft in der Vorschau: PC 1180 hell (alle Wechsel Spalte ↔ Ansichten, Tische, Liste, Mehr ↔ Klasse, Lerngruppenwahl), iPad hochkant 820 dunkel (Sitzplan mit Notenauswahl, Fehlzeiten), Handy unverändert. **Nicht geprüft:** echtes iPad (Vollbild, Querformat), Druck.
+
 ## Neue Bedienung – Etappe 2: Namensliste folgt dem Modus (gebaut 15.11.2026, nicht veröffentlicht)
 - Namensliste (bisher „Liste“, jetzt „Namen“) hat oben eine Modusleiste: Anwesend · Mitarbeit · Vergessen/Vermerke · AV/SV (Sek I), darunter Kontext („Alle da, weiter“, Art des Vermerks, Hinweise). Vorläufig, bis die feste linke Spalte kommt (Etappe 3).
 - Antippen eines Namens wirkt wie im Sitzplan (`seat`/`pick`): Mitarbeit öffnet dieselbe Notenauswahl wie am Tisch (`pickPopHTML`, neben bzw. unter/über dem Namen); „Mehr: Kategorie, Bemerkung …“ öffnet den bisherigen Schnelldialog. Datum der Namensliste = Datum des Sitzplans.

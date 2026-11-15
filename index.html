@@ -448,8 +448,36 @@ body[data-dev="phone"] .namelist .tile .sub.usub{display:block;margin-left:auto;
 body[data-dev="pc"] main{max-width:none}
 body[data-dev="pc"] .tiles.namelist{max-width:820px}
 body[data-dev="pc"] .tile:hover,body[data-dev="pc"] .list button:hover{background:var(--surface-2)}
-main.fs.pcfs{position:fixed;top:calc(var(--hdrh,64px) + env(safe-area-inset-top,0px));left:92px;right:0;bottom:0;height:auto;z-index:1;padding:8px 10px}
-@media (max-width:899px){main.fs.pcfs{left:0;bottom:66px}}
+/* Feste linke Spalte in der Klasse (iPad und PC): ersetzt Kopfzeile und Navigation */
+:root{--ksw:156px}
+.kspalte{position:fixed;top:0;bottom:0;left:0;width:var(--ksw);z-index:6;background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:2px;overflow-y:auto;overflow-x:hidden;
+  padding:calc(8px + env(safe-area-inset-top,0px)) 8px calc(8px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px))}
+.kskopf{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:0;border-radius:12px;background:var(--head-bg);color:var(--head-ink);padding:8px 10px;margin-bottom:4px}
+.kskopf b{font-size:17px;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kskopf b::after{content:" ▾";color:var(--yellow);font-size:13px}
+.kskopf small{font-size:11.5px;opacity:.8}
+.ksg{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:none;margin:8px 6px 2px}
+.ksb{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;border-radius:10px;padding:8px 8px;min-height:40px;text-align:left;color:var(--ink);font-weight:700;font-size:14px}
+.ksb:hover{background:var(--surface-2)}
+.ksb .ksi{width:22px;flex:none;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--muted)}
+.ksb .ksi svg{width:20px;height:20px}
+.ksb .ksl{flex:1;min-width:0;line-height:1.15;hyphens:auto;-webkit-hyphens:auto}
+.ksb .ksn{font-size:11.5px;color:var(--muted);font-weight:700}
+.ksb[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink)}
+.ksb[aria-pressed="true"] .ksi,.ksb[aria-pressed="true"] .ksn{color:var(--yellow-ink)}
+.ksgrow{flex:1;min-height:8px}
+.kspalte .sync{margin:0 8px 4px;font-size:11.5px;color:var(--muted);white-space:normal}
+body.mitspalte main{margin-left:var(--ksw);max-width:none;padding:22px 28px 40px}
+body.mitspalte main.fs{position:fixed;top:0;left:var(--ksw);right:0;bottom:0;height:auto;margin:0;grid-template-columns:minmax(0,1fr) auto;
+  padding:calc(8px + env(safe-area-inset-top,0px)) calc(8px + env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) 10px}
+body.mitspalte .toast{left:calc(50% + var(--ksw) / 2)}
+.fsmitte{display:flex;flex-direction:column;gap:6px;min-width:0;min-height:0}
+.fsmitte .fsroom{flex:1}
+.fskopf{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fskopf .seg button{min-height:34px;padding:5px 12px}
+.fsmodus{font-size:14px;color:var(--muted)}.fsmodus b{color:var(--ink)}
+@media (max-width:899px){:root{--ksw:146px}.ksb{font-size:13px;gap:6px;padding:7px 6px}.kskopf b{font-size:15px}body.mitspalte main{padding:16px 16px 40px}}
 
 .gpanes{display:grid;gap:14px;align-items:start}
 .gpanes.two{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -489,7 +517,7 @@ button.gname:hover{text-decoration:underline}
 .gfold{margin-top:-2px}
 
 @media print{
-  .top,.nav,.noprint,.toast,#modal,.scrim{display:none!important}
+  .top,.nav,.kspalte,.noprint,.toast,#modal,.scrim{display:none!important}
   body{background:#fff;color:#000}
   main{margin:0!important;padding:0!important;max-width:none!important}
   .gtw{max-height:none!important;overflow:visible!important}
@@ -1437,12 +1465,39 @@ async function offerDownload(filename, data) {
 }
 
 /* Notenbuch – Teil 2: Ansichten */
+// Handy: Leiste unten wie bisher. iPad/PC: außerhalb einer Klasse nur Stundenplan · zuletzt geöffnete Klasse · Mehr;
+// in der Klasse ersetzt die feste linke Spalte (klassenSpalteHTML) die Navigation.
 function tabsFor(D, c) {
   if (D === 'phone') return [['plan', 'Plan'], ['erfassen', 'Eintragen'], ['fehl', 'Anwesenheit'], ['mehr', 'Mehr']];
-  const t = [['plan', 'Plan'], ['erfassen', 'Erfassen'], ['noten', 'Noten'], ['fehl', 'Fehlzeiten'], ['arbeiten', 'Arbeiten']];
-  if (c && c.subject === 'sport') t.push(['sport', 'Sport']);
-  t.push(['mehr', 'Mehr']);
-  return t;
+  return [['plan', 'Plan'], ...(c ? [['klasse', c.name, 'zurklasse']] : []), ['mehr', 'Mehr']];
+}
+const KLASSEN_ANSICHTEN = ['erfassen', 'noten', 'fehl', 'arbeiten', 'sport'];
+const mitSpalte = (D, c) => D !== 'phone' && !!c && KLASSEN_ANSICHTEN.includes(UI.view);
+// Feste linke Spalte der Klasse: Kopf · Unterricht · Erfassen · Überblick · Stundenplan/Mehr – immer an denselben Orten
+function klassenSpalteHTML(c) {
+  const erf = UI.view === 'erfassen', L = activeList(c), nList = listsOf(c).filter(l => !l.archived).length;
+  const knopf = (a, v, icon, label, aktiv, extra = '', zahl = '') => `<button class="ksb" data-a="${a}" ${v != null ? `data-v="${v}"` : ''} ${aktiv != null ? `aria-pressed="${aktiv}"` : ''} ${extra}><span class="ksi">${icon}</span><span class="ksl">${label}</span>${zahl ? `<span class="ksn">${zahl}</span>` : ''}</button>`;
+  const modus = (k, icon, label) => knopf('modus', k, icon, label, erf && UI.modus === k);
+  const blick = (k, label) => knopf('tab', k, ICON[k], label, UI.view === k);
+  return `<aside class="kspalte" aria-label="Lerngruppe ${esc(c.name)}">
+    <button class="kskopf" data-a="pickcls" aria-label="Lerngruppe wechseln"><b>${esc(c.name)}</b><small>${subjName(c.subject)}, ${c.level === 'sek2' ? 'Sek II' : 'Sek I'}, ${c.term}. Hj.</small></button>
+    <div class="ksg">Unterricht</div>
+    ${knopf('topic', null, '📖', 'Lehrstoff', null)}
+    ${knopf('rand', null, '🎲', 'Zufall', null)}
+    ${knopf('listpick', null, '📋', 'Liste', L ? true : null, '', L ? `${doneCount(c, L)}/${c.students.length}` : nList ? String(nList) : '')}
+    <div class="ksg">Erfassen</div>
+    ${modus('anw', '✓', 'Anwesenheit')}
+    ${modus('noten', '✎', 'Mitarbeit')}
+    ${c.level === 'sek1' ? modus('avsv', '★', 'AV/SV') : ''}
+    ${modus('verg', '!', c.subject === 'sport' ? 'Vermerke' : 'Vergessen')}
+    ${knopf('bulk', null, '👥', 'Note für Gruppe', null)}
+    <div class="ksg">Überblick</div>
+    ${blick('noten', 'Noten')}${blick('fehl', 'Fehlzeiten')}${blick('arbeiten', 'Arbeiten')}${c.subject === 'sport' ? blick('sport', 'Sport') : ''}
+    <span class="ksgrow"></span>
+    ${syncHTML()}
+    ${knopf('toplan', null, ICON.plan, 'Stundenplan', null)}
+    ${knopf('tab', 'mehr', ICON.mehr, 'Mehr', null)}
+  </aside>`;
 }
 function render() {
   try { return renderMain(); } catch (e) {
@@ -1476,12 +1531,16 @@ function renderMain() {
       ${syncHTML()}
       <button class="lockbtn" data-a="lock" title="Auf diesem Gerät sperren – danach wieder mit Passwort">Sperren</button>
     </header>`;
-  const nav = `<nav class="nav" aria-label="Bereiche">${tabs.map(([k, t]) => `<button data-a="tab" data-v="${k}" ${curTab === k ? 'aria-current="page"' : ''}>${ICON[k]}<span>${t}</span></button>`).join('')}</nav>`;
+  const nav = `<nav class="nav" aria-label="Bereiche">${tabs.map(([k, t, a]) => `<button data-a="${a || 'tab'}" data-v="${k}" ${curTab === k ? 'aria-current="page"' : ''} ${a ? `title="${esc(t)} öffnen"` : ''}>${ICON[k] || ICON.erfassen}<span>${esc(t)}</span></button>`).join('')}</nav>`;
   const modal = `<div id="modal">${UI.modal ? modalHTML() : ''}</div>`;
   const app = document.getElementById('app');
-  if (UI.seatFull) {
-    // iPad: echtes Vollbild ohne Navigation. PC: Sitzplan füllt den Platz neben der Navigation.
-    app.innerHTML = D === 'pc' ? `${header}<main id="main" class="fs pcfs">${fsSeatsHTML(c)}</main>${nav}${modal}` : `<main id="main" class="fs">${fsSeatsHTML(c)}</main>${modal}`;
+  const spalte = mitSpalte(D, c);
+  document.body.classList.toggle('mitspalte', spalte);
+  if (spalte) {
+    // iPad/PC in der Klasse: nur die feste linke Spalte, keine Kopfzeile, keine Navigation
+    app.innerHTML = `${klassenSpalteHTML(c)}${UI.seatFull ? `<main id="main" class="fs">${fsSeatsHTML(c)}</main>` : `<main id="main">${viewHTML(c)}</main>`}${modal}`;
+  } else if (UI.seatFull) {
+    app.innerHTML = `<main id="main" class="fs">${fsSeatsHTML(c)}</main>${modal}`;
   } else {
     app.innerHTML = `${header}<main id="main">${c || UI.view === 'mehr' || UI.view === 'plan' ? viewHTML(c) : noClassHTML()}</main>${nav}${modal}`;
   }
@@ -1515,7 +1574,7 @@ function erfassenHTML(c) {
   const dTag = seatDay(), att = c.att[dTag] || {}, m = listModus(c);
   const head = `<div class="spread" style="margin-bottom:14px">
     ${dev() === 'phone' ? '<span></span>' : `<div class="seg" role="group" aria-label="Ansicht"><button data-a="listmode" data-v="sitz" aria-pressed="${UI.listMode === 'sitz'}">Sitzplan</button><button data-a="listmode" data-v="kacheln" aria-pressed="${UI.listMode === 'kacheln'}">Namen</button></div>`}
-    <span class="row"><button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}<button class="btn sm" data-a="bulk">Gruppe eintragen</button><span class="muted small">${dTag === today() ? 'Heute, ' : ''}${fmtDate(dTag)}</span></span></div>`;
+    <span class="row">${dev() === 'phone' ? `<button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>` : ''}${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}${dev() === 'phone' ? '<button class="btn sm" data-a="bulk">Gruppe eintragen</button>' : ''}<span class="muted small">${dTag === today() ? 'Heute, ' : ''}${fmtDate(dTag)}</span></span></div>`;
   const L = activeList(c);
   const tpHint = (() => { const t = topicOf(c, today()); if (t && t.done) return ''; const p = lastPlan(c, today()); return p ? `<div class="card planhint"><span class="small muted">Geplant (vom ${fmtDate(p.date)}):</span><div style="white-space:pre-wrap">${esc(p.plan)}</div><button class="btn sm" data-a="topic" style="margin-top:6px">Lehrstoff eintragen</button></div>` : ''; })();
   const banner = L ? `<div class="card lbanner"><span>📋 <b>${esc(L.title)}</b> · ${doneCount(c, L)} von ${c.students.length} erledigt${L.due ? ' · Frist ' + fmtDate(L.due) : ''}<br><span class="small muted">Antippen hakt ab oder entfernt den Haken.</span></span><span class="row"><button class="btn sm" data-a="openlist" data-v="${L.id}">Bemerkungen</button><button class="btn primary sm" data-a="listsel" data-v="">Fertig</button></span></div>` : '';
@@ -1540,7 +1599,7 @@ function erfassenHTML(c) {
       <span class="marks">${st ? `<span class="badge ${st}">${{ e: 'fehlt (e)', u: 'fehlt (u)', v: 'verspätet' }[st]}</span>` : ''}${ex ? '<span class="badge x">befreit</span>' : ''}${s.nta ? '<span class="badge nta">NTA</span>' : ''}${allMarkTypes(c).filter(t => hasMark(c, s.id, dTag, t)).map(t => `<span class="badge ${partTypes(c).includes(t) ? 'pt' : 'mk'}">${MARK[t][0]}${isPart(t) ? ' ' + (markState(c, s.id, dTag, t) === 'u' ? 'U' : 'E') : ''}</span>`).join('')}${extra}${listBadge(c, s.id, 'badge')}</span>
     </button>`; }).join('')}</div>`;
 }
-// Modi der Namensliste (bis die feste linke Spalte kommt, Etappe 3). „Tische“ und „Listen“ gelten hier als Mitarbeit.
+// Modi der Namensliste (Handy: Leiste oben; iPad/PC: linke Spalte). „Tische“ und „Listen“ gelten hier als Mitarbeit.
 const modiOf = c => [['anw', 'Anwesend'], ['noten', 'Mitarbeit'], ['verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen'], ...(c.level === 'sek1' ? [['avsv', 'AV/SV']] : [])];
 const listModus = c => modiOf(c).some(([k]) => k === UI.modus) ? UI.modus : 'noten';
 function modusLeisteHTML(c) {
@@ -1550,7 +1609,8 @@ function modusLeisteHTML(c) {
     : m === 'verg' ? `${allMarkTypes(c).map(t => `<button class="chip" data-a="marktype" data-v="${t}" aria-pressed="${curMT(c) === t}">${MARK[t][2]}</button>`).join('')}<span class="small muted">Antippen = markieren/entfernen${isPart(curMT(c)) ? ' (1× E, 2× U, 3× aus)' : ''}</span>`
     : m === 'avsv' ? '<span class="small muted">Antippen: Arbeits- oder Sozialverhalten eintragen. Nur Auffälliges, sonst gilt C.</span>'
     : '<span class="small muted">Antippen: Note geben</span>';
-  return `<div class="modusleiste"><div class="seg" role="group" aria-label="Modus">${modiOf(c).map(([k, t]) => `<button data-a="modus" data-v="${k}" aria-pressed="${m === k}">${t}</button>`).join('')}</div>
+  // iPad/PC: die Modi stehen in der linken Spalte, hier nur der Kontext zum Modus
+  return `<div class="modusleiste">${dev() !== 'phone' ? '' : `<div class="seg" role="group" aria-label="Modus">${modiOf(c).map(([k, t]) => `<button data-a="modus" data-v="${k}" aria-pressed="${m === k}">${t}</button>`).join('')}</div>`}
     <div class="row modusctx">${ctx}<span class="small muted lpinfo">Lange drücken: Schülerkarte</span></div></div>`;
 }
 const seatDay = () => UI.seatDate || today();
@@ -1676,26 +1736,17 @@ function fsSeatsHTML(c) {
   const att = c.att[seatDay()] || {}, H = roomHeight(c);
   const edit = UI.modus === 'edit', mq = UI.modus === 'noten', d = seatDay(), isToday = d === today(), range = UI.seatRange || 'tag';
   const side = (a, v, label, icon, pressed, extra = '') => `<button class="fsb" data-a="${a}" ${v != null ? `data-v="${v}"` : ''} ${pressed != null ? `aria-pressed="${pressed}"` : ''} ${extra}><span class="ic">${icon}</span><span>${label}</span></button>`;
-  const left = `<aside class="fsl" aria-label="Modus">
-      <div class="fsname" title="${esc(c.name)}">${esc(c.name)}</div>
-      ${side('modus', 'noten', 'Mitarbeit', '✎', mq)}
-      ${side('modus', 'anw', 'Anwesend', '✓', UI.modus === 'anw')}
-      ${side('modus', 'verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen', '!', UI.modus === 'verg')}
-      ${c.level === 'sek1' ? side('modus', 'avsv', 'AV/SV', '★', UI.modus === 'avsv') : ''}
-      ${side('rand', null, 'Zufall', '🎲')}
-      ${side('modus', 'liste', 'Listen', '📋', UI.modus === 'liste')}
-      ${side('topic', null, 'Lehrstoff', '📖', null, 'aria-label="Lehrstoff dieser Stunde"')}
-      ${side('modus', 'edit', 'Tische', '⇄', edit)}
-      ${edit ? side('seatreset', null, isGroups(c) ? 'Alle verteilen' : 'Neu ordnen', '↺') : ''}
-      <span class="fsgrow"></span>
-      ${side('toplan', null, 'Stunden­plan', '🗓', null, 'aria-label="Zurück zum Stundenplan"')}
-      ${side('seatfull', null, 'Namen', '☰', null, 'aria-label="Sitzplan schließen, zur Namensliste"')}
-    </aside>`;
+  const modusName = edit ? 'Tische umstellen' : ({ anw: 'Anwesenheit', noten: 'Mitarbeit', verg: c.subject === 'sport' ? 'Vermerke' : 'Vergessen', avsv: 'AV/SV' }[UI.modus] || 'Mitarbeit');
+  // Kopfzeile über dem Raum: Sitzplan | Namen, aktueller Modus, Tische umstellen (Einrichtung, kein Erfassungsmodus)
+  const kopf = `<div class="fskopf"><div class="seg" role="group" aria-label="Ansicht"><button aria-pressed="true">Sitzplan</button><button data-a="seatfull" aria-pressed="false">Namen</button></div>
+      <span class="fsmodus"><b>${modusName}</b>${activeList(c) && !edit ? ' · Liste aktiv' : ''}</span><span class="fsgrow"></span>
+      ${edit ? `<button class="btn primary sm" data-a="modus" data-v="${UI.vorEdit || 'noten'}">Fertig</button>` : '<button class="btn sm" data-a="modus" data-v="edit">⇄ Tische umstellen</button>'}</div>`;
   const grp = isGroups(c), g = c.seats.g || { cols: 2, rows: 3 };
   const unseated = grp ? sorted(c).filter(s => !c.seats.slot[s.id]) : [];
   const step = (k, lbl) => `<div class="fsstep"><span>${lbl}</span><div><button data-a="gdim" data-k="${k}" data-d="-1" aria-label="${lbl} weniger">−</button><b>${g[k]}</b><button data-a="gdim" data-k="${k}" data-d="1" aria-label="${lbl} mehr">+</button></div></div>`;
   const right = edit ? `<aside class="fsr ${grp ? 'wide' : ''}" aria-label="Raum">
       <div class="small"><b>Raum</b></div>
+      ${side('seatreset', null, isGroups(c) ? 'Alle verteilen' : 'Neu ordnen', '↺')}
       ${side('seatlayout', 'free', 'Einzeltische', '▭', !grp)}
       ${side('seatlayout', 'groups', '6er-Tische', '⊞', grp)}
       ${grp ? `${step('cols', 'Spalten')}${step('rows', 'Reihen')}
@@ -1714,13 +1765,12 @@ function fsSeatsHTML(c) {
       ${UI.modus === 'anw' ? (() => { const n = Object.keys(att).length;
         return `<span class="fssep"></span>${side('alleda', null, n ? 'Fertig, weiter' : 'Alle da, weiter', '→', null, 'aria-label="Anwesenheit bestätigen, weiter zur Mitarbeit"')}<p class="small muted" style="margin:0">${n ? `${n} vermerkt.` : 'Alle anwesend?'} Tisch antippen: E → U → V → da.</p>`; })() : ''}
       ${UI.modus === 'avsv' ? '<span class="fssep"></span><p class="small muted" style="margin:0">Tisch antippen: Arbeits- oder Sozialverhalten eintragen. Zahl = Einträge an diesem Tag. Nur Auffälliges, sonst gilt C.</p>' : ''}
-      ${UI.modus === 'liste' ? (() => { const act = listsOf(c).filter(l => !l.archived), L = activeList(c);
-        return `<span class="fssep"></span>${act.length ? act.map(l => side('listsel', l.id, esc(l.title.length > 16 ? l.title.slice(0, 15) + '…' : l.title), '📋', UI.listSel === l.id, `title="${esc(l.title)}"`)).join('') + (L ? `<p class="small" style="margin:0"><b>${doneCount(c, L)} von ${c.students.length}</b> erledigt</p>` : '') : '<p class="small muted" style="margin:0">Keine aktive Liste. Anlegen unter Mehr → Listen.</p>'}`; })() : ''}
+      ${(() => { const L = activeList(c); return L ? `<span class="fssep"></span><p class="small" style="margin:0">📋 <b>${esc(L.title)}</b><br>${doneCount(c, L)} von ${c.students.length} erledigt. Tisch antippen hakt ab.</p>${side('listsel', '', 'Liste beenden', '✓')}` : ''; })()}
     </aside>`;
   const inner = grp ? groupRoomHTML(c, att) : desksHTML(c, att, H);
   const warn = grp && !edit && unseated.length ? `<button class="fswarn" data-a="modus" data-v="edit">${unseated.length} ohne Platz – zuordnen</button>` : '';
   const pop = mq ? pickPopHTML(c) : '';
-  return `${pop}${left}<div class="fsroom"><div class="room fsroomin ${edit ? 'editing' : ''} ${grp ? 'groups' : ''}" id="room">${inner}<div class="board">Tafel</div>${warn}</div></div>${right}`;
+  return `${pop}<div class="fsmitte">${kopf}<div class="fsroom"><div class="room fsroomin ${edit ? 'editing' : ''} ${grp ? 'groups' : ''}" id="room">${inner}<div class="board">Tafel</div>${warn}</div></div></div>${right}`;
 }
 // Notenauswahl (Mitarbeit) – im Sitzplan neben dem Tisch, in der Namensliste neben dem Namen
 function pickPopHTML(c) {
@@ -2561,7 +2611,7 @@ function toggleNativeFull(on) {
     else if (document.fullscreenElement || document.webkitFullscreenElement) { const x = document.exitFullscreen || document.webkitExitFullscreen; const p = x.call(document); if (p && p.catch) p.catch(() => {}); }
   } catch (e) {}
 }
-function seatFullToggle() { UI.listMode = 'kacheln'; toggleNativeFull(false); render(); window.scrollTo(0, 0); }
+function seatFullToggle() { if (UI.modus === 'edit') UI.modus = UI.vorEdit || 'noten'; UI.listMode = 'kacheln'; toggleNativeFull(false); render(); window.scrollTo(0, 0); }
 function commit(opts = {}) { save(); if (opts.full !== false) render(); }
 
 const A = {
@@ -2584,7 +2634,7 @@ const A = {
   askyes: () => closeAsk(true), askno: () => closeAsk(false),
   close: () => { closeModal(); },
   scrim: (el, e) => { if (e.target === el) closeModal(); },
-  tab: el => { if (el.dataset.v === 'plan' && UI.view !== 'plan') UI.weekOff = 0; UI.view = el.dataset.v; UI.sub = null; UI.examId = null; UI.tableId = null; UI.modal = null; render(); window.scrollTo(0, 0); },
+  tab: el => { if (el.dataset.v === 'plan' && UI.view !== 'plan') UI.weekOff = 0; if (el.dataset.v === 'plan' || el.dataset.v === 'mehr') toggleNativeFull(false); UI.view = el.dataset.v; UI.sub = null; UI.examId = null; UI.tableId = null; UI.modal = null; render(); window.scrollTo(0, 0); },
   go: el => { UI.view = 'mehr'; UI.sub = el.dataset.v || null; UI.snaps = undefined; UI.snapPrev = null; UI.tableId = null; UI.modal = null; render(); window.scrollTo(0, 0); },
   pickcls: () => openModal({ type: 'pickcls' }),
   // In Auswertungen und unter Mehr bleibt die Ansicht, sonst öffnet die Lerngruppe wie aus dem Stundenplan
@@ -2592,12 +2642,14 @@ const A = {
     if (['plan', 'erfassen'].includes(UI.view)) return klasseOeffnen(k);
     UI.cls = k.id; S.lastCls = k.id; UI.modal = null; UI.examId = null; UI.measure = {}; save(); render(); },
   listmode: el => { UI.listMode = el.dataset.v; if (el.dataset.v === 'sitz') toggleNativeFull(true); render(); window.scrollTo(0, 0); },
+  // Modus wählen: aus Noten, Fehlzeiten usw. geht es dabei zurück zur Erfassung (Sitzplan oder Namen wie zuletzt)
   modus: el => {
+    if (el.dataset.v === 'edit' && UI.modus !== 'edit') UI.vorEdit = UI.modus;
     UI.modus = el.dataset.v; UI.pick = null;
-    if (UI.modus === 'liste') { const c = cls(); if (!activeList(c)) { const f = listsOf(c).find(l => !l.archived); UI.listSel = f ? f.id : null; } }
-    else UI.listSel = null;
+    if (UI.view !== 'erfassen') { UI.view = 'erfassen'; UI.sub = null; UI.examId = null; UI.tableId = null; UI.modal = null; if (UI.listMode === 'sitz') toggleNativeFull(true); window.scrollTo(0, 0); }
     render();
   },
+  zurklasse: () => { const c = cls(); if (c) klasseOeffnen(c); },
   listpick: () => openModal({ type: 'listpick' }),
   listsel: el => { UI.listSel = el.dataset.v || null; if (!UI.listSel && UI.modus === 'liste') UI.modus = 'noten'; UI.modal = null; render(); },
 
