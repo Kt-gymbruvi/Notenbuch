@@ -362,6 +362,15 @@ main.fs{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;heigh
 .namelist .tile b{flex:1;min-width:0;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .namelist .tile .marks{margin-top:0;order:2;flex-wrap:nowrap}
 .namelist .tile .sub{order:3;white-space:nowrap;font-size:13px}
+.namelist .tile.marked{box-shadow:inset 4px 0 0 var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--surface))}
+.namelist .tile.picked{background:color-mix(in srgb,var(--yellow) 30%,var(--surface))}
+.desk,.tile{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.modusleiste{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.modusleiste .seg{flex-wrap:nowrap;overflow-x:auto;max-width:100%}
+.modusleiste .seg button{white-space:nowrap}
+.modusctx{gap:8px;align-items:center}
+.modusctx .lpinfo{margin-left:auto}
+body[data-dev="phone"] .modusctx .lpinfo{display:none}
 .desk.mqd{justify-content:space-between;align-items:stretch;padding:4px;gap:3px}
 .nmrow{position:relative;display:flex;align-items:center;justify-content:center;min-height:20px;padding:0 15px}
 .desk .nm{flex:0 1 auto;min-width:0;max-width:100%;border:0;background:var(--navy);color:var(--yellow);border-radius:5px;font-weight:700;font-size:1em;padding:1px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
@@ -1503,10 +1512,10 @@ function needStudents(c) {
 // ---------- Erfassen ----------
 function erfassenHTML(c) {
   if (!c.students.length) return needStudents(c);
-  const att = c.att[today()] || {};
+  const dTag = seatDay(), att = c.att[dTag] || {}, m = listModus(c);
   const head = `<div class="spread" style="margin-bottom:14px">
-    ${dev() === 'phone' ? '<span></span>' : `<div class="seg" role="group" aria-label="Ansicht"><button data-a="listmode" data-v="sitz" aria-pressed="${UI.listMode === 'sitz'}">Sitzplan</button><button data-a="listmode" data-v="kacheln" aria-pressed="${UI.listMode === 'kacheln'}">Liste</button></div>`}
-    <span class="row"><button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}<button class="btn sm" data-a="bulk">Gruppe eintragen</button><span class="muted small">${fmtDate(today())}</span></span></div>`;
+    ${dev() === 'phone' ? '<span></span>' : `<div class="seg" role="group" aria-label="Ansicht"><button data-a="listmode" data-v="sitz" aria-pressed="${UI.listMode === 'sitz'}">Sitzplan</button><button data-a="listmode" data-v="kacheln" aria-pressed="${UI.listMode === 'kacheln'}">Namen</button></div>`}
+    <span class="row"><button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}<button class="btn sm" data-a="bulk">Gruppe eintragen</button><span class="muted small">${dTag === today() ? 'Heute, ' : ''}${fmtDate(dTag)}</span></span></div>`;
   const L = activeList(c);
   const tpHint = (() => { const t = topicOf(c, today()); if (t && t.done) return ''; const p = lastPlan(c, today()); return p ? `<div class="card planhint"><span class="small muted">Geplant (vom ${fmtDate(p.date)}):</span><div style="white-space:pre-wrap">${esc(p.plan)}</div><button class="btn sm" data-a="topic" style="margin-top:6px">Lehrstoff eintragen</button></div>` : ''; })();
   const banner = L ? `<div class="card lbanner"><span>📋 <b>${esc(L.title)}</b> · ${doneCount(c, L)} von ${c.students.length} erledigt${L.due ? ' · Frist ' + fmtDate(L.due) : ''}<br><span class="small muted">Antippen hakt ab oder entfernt den Haken.</span></span><span class="row"><button class="btn sm" data-a="openlist" data-v="${L.id}">Bemerkungen</button><button class="btn primary sm" data-a="listsel" data-v="">Fertig</button></span></div>` : '';
@@ -1517,15 +1526,32 @@ function erfassenHTML(c) {
       <span class="sub">${d ? 'erledigt am ' + fmtDate(d.date) : ((L.notes || {})[s.id] ? esc(L.notes[s.id]) : '')}</span>
       <span class="marks">${d ? '<span class="badge lok">✓ erledigt</span>' : '<span class="badge mk">offen</span>'}</span>
     </button>`; }).join('')}</div>`;
-  return head + tpHint + `<div class="tiles namelist">${sorted(c).map(s => {
+  // Antippen wirkt wie im Sitzplan: Mitarbeit = Notenauswahl, sonst der gewählte Modus
+  const mt = m === 'verg' ? curMT(c) : null;
+  return head + tpHint + modusLeisteHTML(c) + (UI.pick && m === 'noten' ? pickPopHTML(c) : '') + `<div class="tiles namelist">${sorted(c).map(s => {
     const ents = c.entries.filter(e => e.sid === s.id);
     const last = ents.reduce((m, e) => e.date > m ? e.date : m, '');
-    const st = att[s.id]; const ex = activeEx(s);
-    return `<button class="tile ${st === 'e' || st === 'u' ? 'absent' : ''}" data-a="quick" data-id="${s.id}">
+    const st = att[s.id]; const ex = activeEx(s, dTag);
+    const an = mt && hasMark(c, s.id, dTag, mt), nAv = m === 'avsv' ? avsvOf(c).filter(x => x.sid === s.id && x.date === dTag).length : 0;
+    const extra = m === 'verg' && !an && markCount(c, s.id, mt) ? `<span class="badge mk">${MARK[mt][0]} ${markCount(c, s.id, mt)}× im Hj.</span>` : nAv ? `<span class="badge nt">★${nAv}</span>` : '';
+    return `<button class="tile ${st === 'e' || st === 'u' ? 'absent' : ''} ${an ? 'marked' : ''} ${UI.pick === s.id ? 'picked' : ''}" data-a="${m === 'noten' ? 'pick' : 'seat'}" data-id="${s.id}" data-sid="${s.id}" ${m === 'verg' ? `aria-pressed="${!!an}"` : ''}>
       <b>${esc(nameOf(s, c))}</b>
       <span class="sub ${curUnit(c) ? 'usub' : ''}">${curUnit(c) ? unitTileInfo(c, s.id) : `${ents.length} Noten${last ? `, zuletzt ${daysSince(last) === 0 ? 'heute' : 'vor ' + daysSince(last) + ' T.'}` : ''}`}</span>
-      <span class="marks">${st ? `<span class="badge ${st}">${{ e: 'fehlt (e)', u: 'fehlt (u)', v: 'verspätet' }[st]}</span>` : ''}${ex ? '<span class="badge x">befreit</span>' : ''}${s.nta ? '<span class="badge nta">NTA</span>' : ''}${allMarkTypes(c).filter(t => hasMark(c, s.id, today(), t)).map(t => `<span class="badge ${partTypes(c).includes(t) ? 'pt' : 'mk'}">${MARK[t][0]}${isPart(t) ? ' ' + (markState(c, s.id, today(), t) === 'u' ? 'U' : 'E') : ''}</span>`).join('')}${listBadge(c, s.id, 'badge')}</span>
+      <span class="marks">${st ? `<span class="badge ${st}">${{ e: 'fehlt (e)', u: 'fehlt (u)', v: 'verspätet' }[st]}</span>` : ''}${ex ? '<span class="badge x">befreit</span>' : ''}${s.nta ? '<span class="badge nta">NTA</span>' : ''}${allMarkTypes(c).filter(t => hasMark(c, s.id, dTag, t)).map(t => `<span class="badge ${partTypes(c).includes(t) ? 'pt' : 'mk'}">${MARK[t][0]}${isPart(t) ? ' ' + (markState(c, s.id, dTag, t) === 'u' ? 'U' : 'E') : ''}</span>`).join('')}${extra}${listBadge(c, s.id, 'badge')}</span>
     </button>`; }).join('')}</div>`;
+}
+// Modi der Namensliste (bis die feste linke Spalte kommt, Etappe 3). „Tische“ und „Listen“ gelten hier als Mitarbeit.
+const modiOf = c => [['anw', 'Anwesend'], ['noten', 'Mitarbeit'], ['verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen'], ...(c.level === 'sek1' ? [['avsv', 'AV/SV']] : [])];
+const listModus = c => modiOf(c).some(([k]) => k === UI.modus) ? UI.modus : 'noten';
+function modusLeisteHTML(c) {
+  const m = listModus(c);
+  const ctx = m === 'anw' ? (() => { const n = Object.keys(c.att[seatDay()] || {}).length;
+      return `<button class="btn primary sm" data-a="alleda">${n ? 'Fertig, weiter' : 'Alle da, weiter'}</button><span class="small muted">${n ? n + ' vermerkt · ' : ''}Antippen: E → U → V → da</span>`; })()
+    : m === 'verg' ? `${allMarkTypes(c).map(t => `<button class="chip" data-a="marktype" data-v="${t}" aria-pressed="${curMT(c) === t}">${MARK[t][2]}</button>`).join('')}<span class="small muted">Antippen = markieren/entfernen${isPart(curMT(c)) ? ' (1× E, 2× U, 3× aus)' : ''}</span>`
+    : m === 'avsv' ? '<span class="small muted">Antippen: Arbeits- oder Sozialverhalten eintragen. Nur Auffälliges, sonst gilt C.</span>'
+    : '<span class="small muted">Antippen: Note geben</span>';
+  return `<div class="modusleiste"><div class="seg" role="group" aria-label="Modus">${modiOf(c).map(([k, t]) => `<button data-a="modus" data-v="${k}" aria-pressed="${m === k}">${t}</button>`).join('')}</div>
+    <div class="row modusctx">${ctx}<span class="small muted lpinfo">Lange drücken: Schülerkarte</span></div></div>`;
 }
 const seatDay = () => UI.seatDate || today();
 // Gemeinsamer Einstieg in eine Lerngruppe (Stundenplan und Lerngruppenwahl): immer dieselbe Klassenansicht.
@@ -1538,6 +1564,7 @@ function anwMerken(c, d) {
   const m = lsGet(ANW_KEY) || {}; Object.keys(m).forEach(k => { if (m[k] !== d) delete m[k]; });
   m[c.id] = d; lsSet(ANW_KEY, m);
 }
+function anwVergessen(c) { const m = lsGet(ANW_KEY) || {}; delete m[c.id]; lsSet(ANW_KEY, m); }
 const anwErfasst = c => !!(c.att[today()] && Object.keys(c.att[today()]).length) || anwBestaetigt(c);
 const startModus = c => anwErfasst(c) ? 'noten' : 'anw';
 function klasseOeffnen(k) {
@@ -1662,7 +1689,7 @@ function fsSeatsHTML(c) {
       ${edit ? side('seatreset', null, isGroups(c) ? 'Alle verteilen' : 'Neu ordnen', '↺') : ''}
       <span class="fsgrow"></span>
       ${side('toplan', null, 'Stunden­plan', '🗓', null, 'aria-label="Zurück zum Stundenplan"')}
-      ${side('seatfull', null, 'Liste', '☰', null, 'aria-label="Sitzplan schließen, zur Liste"')}
+      ${side('seatfull', null, 'Namen', '☰', null, 'aria-label="Sitzplan schließen, zur Namensliste"')}
     </aside>`;
   const grp = isGroups(c), g = c.seats.g || { cols: 2, rows: 3 };
   const unseated = grp ? sorted(c).filter(s => !c.seats.slot[s.id]) : [];
@@ -1692,8 +1719,14 @@ function fsSeatsHTML(c) {
     </aside>`;
   const inner = grp ? groupRoomHTML(c, att) : desksHTML(c, att, H);
   const warn = grp && !edit && unseated.length ? `<button class="fswarn" data-a="modus" data-v="edit">${unseated.length} ohne Platz – zuordnen</button>` : '';
-  const pk = UI.pick && stu(c, UI.pick);
-  const pop = pk && mq ? `<div id="pickpop" class="pickpop" role="dialog" aria-label="Note für ${esc(nameOf(pk, c))}">
+  const pop = mq ? pickPopHTML(c) : '';
+  return `${pop}${left}<div class="fsroom"><div class="room fsroomin ${edit ? 'editing' : ''} ${grp ? 'groups' : ''}" id="room">${inner}<div class="board">Tafel</div>${warn}</div></div>${right}`;
+}
+// Notenauswahl (Mitarbeit) – im Sitzplan neben dem Tisch, in der Namensliste neben dem Namen
+function pickPopHTML(c) {
+  const pk = UI.pick && stu(c, UI.pick); if (!pk) return '';
+  const d = seatDay(), isToday = d === today();
+  return `<div id="pickpop" class="pickpop" role="dialog" aria-label="Note für ${esc(nameOf(pk, c))}">
       <div class="pphead"><b>${esc(pk.first || pk.last)}</b><span>${esc(pk.first ? pk.last : '')}</span><button class="x" data-a="pickclose" aria-label="Schließen">×</button></div>
       ${!isToday ? `<div class="ppdate">Datum: ${fmtDate(d)}</div>` : ''}
       ${c.level === 'sek2'
@@ -1702,8 +1735,7 @@ function fsSeatsHTML(c) {
            <div class="ppgrid">${[1, 2, 3, 4, 5, 6].map(gg => `<button data-a="pickgrade" data-g="${gg}">${gg}${gg < 6 && UI.pickTend ? `<small>${UI.pickTend === '-' ? '−' : '+'}</small>` : ''}</button>`).join('')}</div>`}
       ${recentHTML(c, pk.id, 'pop')}
       <button class="ppmore" data-a="pickmore">Mehr: Kategorie, Bemerkung …</button>
-    </div>` : '';
-  return `${pop}${left}<div class="fsroom"><div class="room fsroomin ${edit ? 'editing' : ''} ${grp ? 'groups' : ''}" id="room">${inner}<div class="board">Tafel</div>${warn}</div></div>${right}`;
+    </div>`;
 }
 
 // ---------- Notenübersicht ----------
@@ -2439,10 +2471,11 @@ function fitNames() {
 function fitRoom() { fitRoomInner(); requestAnimationFrame(() => { fitNames(); placePop(); }); }
 // Notenauswahl neben den angetippten Tisch setzen (rechts, sonst links), immer im Bild
 function placePop() {
-  const pop = $('#pickpop'), desk = UI.pick && document.querySelector(`#room [data-sid="${UI.pick}"]`); if (!pop || !desk) return;
+  const pop = $('#pickpop'), desk = UI.pick && document.querySelector(`#room [data-sid="${UI.pick}"], .namelist [data-sid="${UI.pick}"]`); if (!pop || !desk) return;
   const r = desk.getBoundingClientRect(), pw = pop.offsetWidth || 260, ph = pop.offsetHeight || 300, vw = window.innerWidth, vh = window.innerHeight;
-  let left = r.right + 10; if (left + pw > vw - 8) left = r.left - pw - 10; if (left < 8) left = Math.max(8, Math.min(vw - pw - 8, r.left + r.width / 2 - pw / 2));
-  let top = r.top + r.height / 2 - ph / 2; top = Math.max(8, Math.min(vh - ph - 8, top));
+  let left = r.right + 10, daneben = true; if (left + pw > vw - 8) left = r.left - pw - 10; if (left < 8) { daneben = false; left = Math.max(8, Math.min(vw - pw - 8, r.left + r.width / 2 - pw / 2)); }
+  // Kein Platz daneben (breite Namenszeile, schmaler Bildschirm): unter, sonst über den Namen
+  let top = daneben ? r.top + r.height / 2 - ph / 2 : (r.bottom + 8 + ph <= vh - 8 ? r.bottom + 8 : r.top - ph - 8); top = Math.max(8, Math.min(vh - ph - 8, top));
   pop.style.left = left + 'px'; pop.style.top = top + 'px'; pop.style.visibility = 'visible';
 }
 const PICK_A = {
@@ -2466,6 +2499,23 @@ document.addEventListener('click', e => {
   if (e.target.closest('#pickpop') || e.target.closest('[data-a="pick"]')) return;
   UI.pick = null; render();
 });
+// Namensliste scrollt: Notenauswahl bleibt neben dem Namen
+window.addEventListener('scroll', () => { if (UI.pick) placePop(); }, { passive: true });
+// Lange drücken (Finger) oder Rechtsklick (Maus) auf Tisch oder Namen: Schülerkarte, in jedem Modus
+let langDruck = null, langDruckFertig = false;
+function schuelerkarte(sid) { const c = cls(); if (!c || !stu(c, sid)) return; if (UI.modal && UI.modal.type === 'student' && UI.modal.sid === sid) return; UI.pick = null; render(); openModal({ type: 'student', sid }); }
+const karteZiel = t => t && t.closest && t.closest('.desk[data-id], .namelist .tile[data-id]');
+document.addEventListener('pointerdown', e => {
+  langDruckFertig = false;
+  const el = karteZiel(e.target); if (!el || e.button > 0 || UI.modus === 'edit') return;
+  const x = e.clientX, y = e.clientY; clearTimeout(langDruck && langDruck.t);
+  langDruck = { x, y, t: setTimeout(() => { langDruck = null; langDruckFertig = true; schuelerkarte(el.dataset.id); }, 550) };
+});
+document.addEventListener('pointermove', e => { if (langDruck && Math.hypot(e.clientX - langDruck.x, e.clientY - langDruck.y) > 10) { clearTimeout(langDruck.t); langDruck = null; } });
+['pointerup', 'pointercancel'].forEach(ev => document.addEventListener(ev, () => { if (langDruck) { clearTimeout(langDruck.t); langDruck = null; } }));
+document.addEventListener('contextmenu', e => { const el = karteZiel(e.target); if (!el || UI.modus === 'edit') return; e.preventDefault(); if (!langDruckFertig) schuelerkarte(el.dataset.id); });
+// Nach dem langen Druck nicht zusätzlich als Antippen werten
+document.addEventListener('click', e => { if (!langDruckFertig) return; langDruckFertig = false; if (karteZiel(e.target)) { e.preventDefault(); e.stopPropagation(); } }, true);
 function fitRoomInner() {
   const room = $('#room'); if (!room) return;
   const c = cls(); if (!c) return;
@@ -2655,7 +2705,8 @@ const A = {
     if (!Object.keys(day).length) delete c.att[d];
     commit();
   },
-  alleda: () => { const c = cls(); if (!c) return; anwMerken(c, seatDay()); UI.modus = 'noten'; UI.pick = null; render(); toast('Anwesenheit erfasst – weiter mit Mitarbeit'); },
+  alleda: () => { const c = cls(); if (!c) return; anwMerken(c, seatDay()); UI.modus = 'noten'; UI.pick = null;
+    LAST = { cls: c.id, fn: k => { anwVergessen(k); UI.modus = 'anw'; } }; render(); toast('Anwesenheit erfasst – weiter mit Mitarbeit', true); },
   attall: () => { const c = cls(), d = UI.attDate || today(), prev = c.att[d]; delete c.att[d]; anwMerken(c, d); commit(); if (prev) { LAST = { cls: c.id, fn: k => { k.att[d] = prev; } }; toast('Alle auf anwesend gesetzt', true); } },
   mark: el => { const c = cls(); const on = toggleMark(c, el.dataset.id, el.dataset.d, el.dataset.t); commit(); if (UI.modal) renderModal(); const s = stu(c, el.dataset.id); if (s) toast(`${s.first || s.last}: ${markToast(el.dataset.t, on)}`); },
   snapprev: async el => {
@@ -2736,8 +2787,10 @@ const A = {
   listarch: el => { UI.listArch = !!el.dataset.v; render(); },
   lcheck: el => {
     const c = cls(), l = listById(c, el.dataset.v); if (!l) return; l.done = l.done || {};
-    if (l.done[el.dataset.id]) delete l.done[el.dataset.id]; else l.done[el.dataset.id] = { date: today() };
-    commit();
+    const sid = el.dataset.id, vorher = l.done[sid], s = stu(c, sid);
+    if (vorher) delete l.done[sid]; else l.done[sid] = { date: today() };
+    LAST = { cls: c.id, fn: k => { const x = listById(k, l.id); if (!x) return; x.done = x.done || {}; if (vorher) x.done[sid] = vorher; else delete x.done[sid]; } };
+    commit(); if (s) toast(`${s.first || s.last}: ${vorher ? 'wieder offen' : 'erledigt'}`, true);
   },
   archlist: el => { const c = cls(), l = listById(c, el.dataset.v); if (!l) return; l.archived = !l.archived; UI.modal = null; UI.sub = 'lists'; commit(); toast(l.archived ? 'Liste archiviert' : 'Liste wiederhergestellt'); },
   dellist: async el => {
@@ -3263,15 +3316,18 @@ Object.assign(A, {
   },
   seat: el => {
     const c = cls(), sid = el.dataset.id; if (!sid || !stu(c, sid)) return;
+    const s = stu(c, sid);
     if (UI.modus === 'anw') {
-      const d = seatDay(); const day = c.att[d] = c.att[d] || {};
+      const d = seatDay(); const day = c.att[d] = c.att[d] || {}, vorher = day[sid];
       const order = [undefined, 'e', 'u', 'v']; const nx = order[(order.indexOf(day[sid]) + 1) % order.length];
       if (nx) day[sid] = nx; else delete day[sid];
       if (!Object.keys(day).length) delete c.att[d];
-      return commit();
+      LAST = { cls: c.id, fn: k => { const t = k.att[d] = k.att[d] || {}; if (vorher) t[sid] = vorher; else delete t[sid]; if (!Object.keys(t).length) delete k.att[d]; } };
+      commit(); return toast(`${s.first || s.last}: ${nx ? { e: 'fehlt entschuldigt', u: 'fehlt unentschuldigt', v: 'verspätet' }[nx] : 'anwesend'}`, true);
     }
     if (UI.modus === 'avsv' && c.level === 'sek1') return openModal({ type: 'avsv', sid, date: seatDay(), k: UI.avk || 'av' });
-    if (UI.modus === 'verg') { const t = curMT(c), on = toggleMark(c, sid, seatDay(), t), s = stu(c, sid); commit(); return toast(`${s.first || s.last}: ${markToast(t, on)}`); }
+    if (UI.modus === 'verg') { const t = curMT(c), vorher = JSON.stringify(marksOf(c)), on = toggleMark(c, sid, seatDay(), t);
+      LAST = { cls: c.id, fn: k => { k.marks = JSON.parse(vorher); } }; commit(); return toast(`${s.first || s.last}: ${markToast(t, on)}`, true); }
     openModal({ type: 'quick', sid, tend: '', date: seatDay() !== today() ? seatDay() : undefined, cat: mitCat(c) });
   }
 });

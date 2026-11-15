@@ -4,6 +4,13 @@ Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unte
 Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
 Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
+## Neue Bedienung – Etappe 2: Namensliste folgt dem Modus (gebaut 15.11.2026, nicht veröffentlicht)
+- Namensliste (bisher „Liste“, jetzt „Namen“) hat oben eine Modusleiste: Anwesend · Mitarbeit · Vergessen/Vermerke · AV/SV (Sek I), darunter Kontext („Alle da, weiter“, Art des Vermerks, Hinweise). Vorläufig, bis die feste linke Spalte kommt (Etappe 3).
+- Antippen eines Namens wirkt wie im Sitzplan (`seat`/`pick`): Mitarbeit öffnet dieselbe Notenauswahl wie am Tisch (`pickPopHTML`, neben bzw. unter/über dem Namen); „Mehr: Kategorie, Bemerkung …“ öffnet den bisherigen Schnelldialog. Datum der Namensliste = Datum des Sitzplans.
+- Rückgängig-Leiste nach jedem Tipp: Anwesenheit, Vergessen/Vermerke, Abhaken in Listen, „Alle da, weiter“ (Noten und AV/SV hatten sie schon).
+- Lange drücken (Finger, 0,55 s) oder Rechtsklick auf Tisch oder Namen öffnet die Schülerkarte, in jedem Modus außer „Tische“.
+- Geprüft in der Vorschau mit Testdaten: alle Modi in der Namensliste, Rückgängig je Modus, Notenauswahl (PC breit, Handy dunkel), Langdruck ohne zusätzlichen Tipp, Rechtsklick in Liste und Sitzplan, Sitzplan unverändert. **Nicht geprüft:** echter Finger auf iPad/Handy (Langdruck nur nachgestellt), iOS-Kontextmenü.
+
 ## Neue Bedienung – Etappe 1: gemeinsamer Einstieg (gebaut 15.11.2026, nicht veröffentlicht)
 Konzept: `docs/KONZEPT-bedienung.md`.
 - `UI.seatMode` heißt jetzt `UI.modus` (Aktion `modus` statt `seatmode`); Sitzplan und Namensliste lesen denselben Zustand.
