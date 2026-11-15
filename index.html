@@ -158,9 +158,11 @@ table.t{border-collapse:collapse;width:100%;font-size:15.5px}
 button.tl:active{background:var(--surface-2)}
 .tlk{flex:0 0 86px;font-size:12.5px;color:var(--muted);padding-top:2px}
 .tlt{flex:1;min-width:0}
-.tlt.bad,.statgrid .bad,.attrow .bad{color:var(--bad);font-weight:700}
+.tlt.bad,.statgrid .bad,.attrow .bad,.fehlz .bad{color:var(--bad);font-weight:700}
 .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px}
-.statgrid>div{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.statgrid>div,.statgrid>.sbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.sbox{background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.sbox:hover{background:var(--surface-2)}.sbox[aria-pressed="true"]{border-color:var(--yellow);box-shadow:0 0 0 2px var(--yellow) inset}
 .statgrid b{font-size:1.2em}
 /* Abhaklisten */
 .lbox{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
@@ -369,6 +371,8 @@ main.fs{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;heigh
 .modusleiste .seg{flex-wrap:nowrap;overflow-x:auto;max-width:100%}
 .modusleiste .seg button{white-space:nowrap}
 .modusctx{gap:8px;align-items:center}
+.datumwahl{gap:4px;flex-wrap:nowrap}.datumwahl .in{width:auto;min-height:36px;padding:4px 8px}
+.datumwahl.vergangen .in{background:var(--yellow);color:var(--yellow-ink);border-color:var(--yellow)}
 .modusctx .lpinfo{margin-left:auto}
 body[data-dev="phone"] .modusctx .lpinfo{display:none}
 .desk.mqd{justify-content:space-between;align-items:stretch;padding:4px;gap:3px}
@@ -1468,7 +1472,7 @@ async function offerDownload(filename, data) {
 // Handy: Leiste unten wie bisher. iPad/PC: außerhalb einer Klasse nur Stundenplan · zuletzt geöffnete Klasse · Mehr;
 // in der Klasse ersetzt die feste linke Spalte (klassenSpalteHTML) die Navigation.
 function tabsFor(D, c) {
-  if (D === 'phone') return [['plan', 'Plan'], ['erfassen', 'Eintragen'], ['fehl', 'Anwesenheit'], ['mehr', 'Mehr']];
+  if (D === 'phone') return [['plan', 'Plan'], ['erfassen', 'Eintragen'], ['fehl', 'Fehlzeiten'], ['mehr', 'Mehr']];
   return [['plan', 'Plan'], ...(c ? [['klasse', c.name, 'zurklasse']] : []), ['mehr', 'Mehr']];
 }
 const KLASSEN_ANSICHTEN = ['erfassen', 'noten', 'fehl', 'arbeiten', 'sport'];
@@ -1488,6 +1492,7 @@ function klassenSpalteHTML(c) {
     <div class="ksg">Erfassen</div>
     ${modus('anw', '✓', 'Anwesenheit')}
     ${modus('noten', '✎', 'Mitarbeit')}
+    ${c.subject === 'sport' ? modus('mess', '⏱', 'Messwerte') : ''}
     ${c.level === 'sek1' ? modus('avsv', '★', 'AV/SV') : ''}
     ${modus('verg', '!', c.subject === 'sport' ? 'Vermerke' : 'Vergessen')}
     ${knopf('bulk', null, '👥', 'Note für Gruppe', null)}
@@ -1574,7 +1579,7 @@ function erfassenHTML(c) {
   const dTag = seatDay(), att = c.att[dTag] || {}, m = listModus(c);
   const head = `<div class="spread" style="margin-bottom:14px">
     ${dev() === 'phone' ? '<span></span>' : `<div class="seg" role="group" aria-label="Ansicht"><button data-a="listmode" data-v="sitz" aria-pressed="${UI.listMode === 'sitz'}">Sitzplan</button><button data-a="listmode" data-v="kacheln" aria-pressed="${UI.listMode === 'kacheln'}">Namen</button></div>`}
-    <span class="row">${dev() === 'phone' ? `<button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>` : ''}${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}${dev() === 'phone' ? '<button class="btn sm" data-a="bulk">Gruppe eintragen</button>' : ''}<span class="muted small">${dTag === today() ? 'Heute, ' : ''}${fmtDate(dTag)}</span></span></div>`;
+    <span class="row">${dev() === 'phone' ? `<button class="btn sm" data-a="topic">📖 Lehrstoff</button><button class="btn sm" data-a="listpick" aria-pressed="${!!activeList(c)}">📋 Liste</button><button class="btn sm" data-a="rand">🎲 Zufall</button>` : ''}${usesUnits(c) ? (() => { const u = curUnit(c); return `<button class="btn sm ${u ? 'primary' : ''}" data-a="unitpick">${u ? unitIcon(u) + ' ' + esc(u.name) : '🏅 Sportart wählen'} ▾</button>`; })() : ''}${dev() === 'phone' ? '<button class="btn sm" data-a="bulk">Gruppe eintragen</button>' : ''}<span class="row datumwahl ${dTag !== today() ? 'vergangen' : ''}"><button class="btn sm" data-a="seatday" data-d="-1" aria-label="Früherer Tag">‹</button><input class="in" type="date" value="${dTag}" data-c="seatdate" aria-label="Datum der Einträge"><button class="btn sm" data-a="seatday" data-d="1" aria-label="Späterer Tag">›</button>${dTag !== today() ? '<button class="btn sm" data-a="seatday" data-d="0">Heute</button>' : ''}</span></span></div>`;
   const L = activeList(c);
   const tpHint = (() => { const t = topicOf(c, today()); if (t && t.done) return ''; const p = lastPlan(c, today()); return p ? `<div class="card planhint"><span class="small muted">Geplant (vom ${fmtDate(p.date)}):</span><div style="white-space:pre-wrap">${esc(p.plan)}</div><button class="btn sm" data-a="topic" style="margin-top:6px">Lehrstoff eintragen</button></div>` : ''; })();
   const banner = L ? `<div class="card lbanner"><span>📋 <b>${esc(L.title)}</b> · ${doneCount(c, L)} von ${c.students.length} erledigt${L.due ? ' · Frist ' + fmtDate(L.due) : ''}<br><span class="small muted">Antippen hakt ab oder entfernt den Haken.</span></span><span class="row"><button class="btn sm" data-a="openlist" data-v="${L.id}">Bemerkungen</button><button class="btn primary sm" data-a="listsel" data-v="">Fertig</button></span></div>` : '';
@@ -1592,7 +1597,8 @@ function erfassenHTML(c) {
     const last = ents.reduce((m, e) => e.date > m ? e.date : m, '');
     const st = att[s.id]; const ex = activeEx(s, dTag);
     const an = mt && hasMark(c, s.id, dTag, mt), nAv = m === 'avsv' ? avsvOf(c).filter(x => x.sid === s.id && x.date === dTag).length : 0;
-    const extra = m === 'verg' && !an && markCount(c, s.id, mt) ? `<span class="badge mk">${MARK[mt][0]} ${markCount(c, s.id, mt)}× im Hj.</span>` : nAv ? `<span class="badge nt">★${nAv}</span>` : '';
+    const mh = m === 'mess' ? messHeute(c, s.id) : null;
+    const extra = mh ? `<span class="badge nt">${esc(mh.label.replace(/^[^:]*: /, ''))} → ${lab(mh.p, c)}</span>` : m === 'verg' && !an && markCount(c, s.id, mt) ? `<span class="badge mk">${MARK[mt][0]} ${markCount(c, s.id, mt)}× im Hj.</span>` : nAv ? `<span class="badge nt">★${nAv}</span>` : '';
     return `<button class="tile ${st === 'e' || st === 'u' ? 'absent' : ''} ${an ? 'marked' : ''} ${UI.pick === s.id ? 'picked' : ''}" data-a="${m === 'noten' ? 'pick' : 'seat'}" data-id="${s.id}" data-sid="${s.id}" ${m === 'verg' ? `aria-pressed="${!!an}"` : ''}>
       <b>${esc(nameOf(s, c))}</b>
       <span class="sub ${curUnit(c) ? 'usub' : ''}">${curUnit(c) ? unitTileInfo(c, s.id) : `${ents.length} Noten${last ? `, zuletzt ${daysSince(last) === 0 ? 'heute' : 'vor ' + daysSince(last) + ' T.'}` : ''}`}</span>
@@ -1600,7 +1606,7 @@ function erfassenHTML(c) {
     </button>`; }).join('')}</div>`;
 }
 // Modi der Namensliste (Handy: Leiste oben; iPad/PC: linke Spalte). „Tische“ und „Listen“ gelten hier als Mitarbeit.
-const modiOf = c => [['anw', 'Anwesend'], ['noten', 'Mitarbeit'], ['verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen'], ...(c.level === 'sek1' ? [['avsv', 'AV/SV']] : [])];
+const modiOf = c => [['anw', 'Anwesend'], ['noten', 'Mitarbeit'], ...(c.subject === 'sport' ? [['mess', 'Messwerte']] : []), ['verg', c.subject === 'sport' ? 'Vermerke' : 'Vergessen'], ...(c.level === 'sek1' ? [['avsv', 'AV/SV']] : [])];
 const listModus = c => modiOf(c).some(([k]) => k === UI.modus) ? UI.modus : 'noten';
 function modusLeisteHTML(c) {
   const m = listModus(c);
@@ -1608,6 +1614,7 @@ function modusLeisteHTML(c) {
       return `<button class="btn primary sm" data-a="alleda">${n ? 'Fertig, weiter' : 'Alle da, weiter'}</button><span class="small muted">${n ? n + ' vermerkt · ' : ''}Antippen: E → U → V → da</span>`; })()
     : m === 'verg' ? `${allMarkTypes(c).map(t => `<button class="chip" data-a="marktype" data-v="${t}" aria-pressed="${curMT(c) === t}">${MARK[t][2]}</button>`).join('')}<span class="small muted">Antippen = markieren/entfernen${isPart(curMT(c)) ? ' (1× E, 2× U, 3× aus)' : ''}</span>`
     : m === 'avsv' ? '<span class="small muted">Antippen: Arbeits- oder Sozialverhalten eintragen. Nur Auffälliges, sonst gilt C.</span>'
+    : m === 'mess' ? messWahlHTML('in') + '<span class="small muted">Antippen: Messwert eintragen, wird mit der Leistungstabelle in eine Note umgerechnet</span>'
     : '<span class="small muted">Antippen: Note geben</span>';
   // iPad/PC: die Modi stehen in der linken Spalte, hier nur der Kontext zum Modus
   return `<div class="modusleiste">${dev() !== 'phone' ? '' : `<div class="seg" role="group" aria-label="Modus">${modiOf(c).map(([k, t]) => `<button data-a="modus" data-v="${k}" aria-pressed="${m === k}">${t}</button>`).join('')}</div>`}
@@ -1661,6 +1668,8 @@ function desksHTML(c, att, H) {
     const LA = activeList(c);
     if (LA && UI.modus !== 'edit') { const d = (LA.done || {})[s.id];
       return `<div class="desk ${d ? 'ldone' : ''} ${st === 'e' || st === 'u' ? 'absent' : ''}" role="button" tabindex="0" data-a="lcheck" data-v="${LA.id}" data-id="${s.id}" aria-pressed="${!!d}" aria-label="${esc(nameOf(s, c))}: ${d ? 'erledigt' : 'offen'}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span><span class="st badge ${d ? 'lok' : 'mk'}">${d ? '✓' : 'offen'}</span></div>`; }
+    if (UI.modus === 'mess' && c.subject === 'sport') { const e = messHeute(c, s.id);
+      return `<div class="desk ${st === 'e' || st === 'u' ? 'absent' : ''}" role="button" tabindex="0" data-a="seat" data-id="${s.id}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span>${e ? `<span class="st badge nt">${lab(e.p, c)}</span>` : stB}</div>`; }
     if (UI.modus === 'avsv' && c.level === 'sek1') { const k = avsvOf(c).filter(x => x.sid === s.id && x.date === seatDay()).length;
       return `<div class="desk ${st === 'e' || st === 'u' ? 'absent' : ''}" role="button" tabindex="0" data-a="seat" data-id="${s.id}" ${pos}><span class="dn">${esc(s.first || s.last)}</span><span class="dl">${esc(s.first ? s.last : '')}</span>${k ? `<span class="st badge nt">★${k}</span>` : ''}</div>`; }
     if (UI.modus === 'verg') { const t = curMT(c), on = hasMark(c, s.id, seatDay(), t), k = markCount(c, s.id, t);
@@ -1736,7 +1745,7 @@ function fsSeatsHTML(c) {
   const att = c.att[seatDay()] || {}, H = roomHeight(c);
   const edit = UI.modus === 'edit', mq = UI.modus === 'noten', d = seatDay(), isToday = d === today(), range = UI.seatRange || 'tag';
   const side = (a, v, label, icon, pressed, extra = '') => `<button class="fsb" data-a="${a}" ${v != null ? `data-v="${v}"` : ''} ${pressed != null ? `aria-pressed="${pressed}"` : ''} ${extra}><span class="ic">${icon}</span><span>${label}</span></button>`;
-  const modusName = edit ? 'Tische umstellen' : ({ anw: 'Anwesenheit', noten: 'Mitarbeit', verg: c.subject === 'sport' ? 'Vermerke' : 'Vergessen', avsv: 'AV/SV' }[UI.modus] || 'Mitarbeit');
+  const modusName = edit ? 'Tische umstellen' : ({ anw: 'Anwesenheit', noten: 'Mitarbeit', mess: 'Messwerte', verg: c.subject === 'sport' ? 'Vermerke' : 'Vergessen', avsv: 'AV/SV' }[UI.modus] || 'Mitarbeit');
   // Kopfzeile über dem Raum: Sitzplan | Namen, aktueller Modus, Tische umstellen (Einrichtung, kein Erfassungsmodus)
   const kopf = `<div class="fskopf"><div class="seg" role="group" aria-label="Ansicht"><button aria-pressed="true">Sitzplan</button><button data-a="seatfull" aria-pressed="false">Namen</button></div>
       <span class="fsmodus"><b>${modusName}</b>${activeList(c) && !edit ? ' · Liste aktiv' : ''}</span><span class="fsgrow"></span>
@@ -1764,6 +1773,7 @@ function fsSeatsHTML(c) {
       ${UI.modus === 'verg' ? `<span class="fssep"></span>${allMarkTypes(c).map(t => side('marktype', t, MARK[t][2], MARK[t][0], curMT(c) === t)).join('')}<p class="small muted" style="margin:0">Tisch antippen = markieren/entfernen. Zahl = Anzahl im Halbjahr.${isPart(curMT(c)) ? ' Verletzt/Erkrankt: 1× = entschuldigt (E), 2× = unentschuldigt (U), 3× = entfernen.' : ''}</p>` : ''}
       ${UI.modus === 'anw' ? (() => { const n = Object.keys(att).length;
         return `<span class="fssep"></span>${side('alleda', null, n ? 'Fertig, weiter' : 'Alle da, weiter', '→', null, 'aria-label="Anwesenheit bestätigen, weiter zur Mitarbeit"')}<p class="small muted" style="margin:0">${n ? `${n} vermerkt.` : 'Alle anwesend?'} Tisch antippen: E → U → V → da.</p>`; })() : ''}
+      ${UI.modus === 'mess' ? `<span class="fssep"></span><div class="small"><b>Disziplin</b></div>${messWahlHTML('in fsin')}<p class="small muted" style="margin:0">Tisch antippen: Messwert eintragen.</p>` : ''}
       ${UI.modus === 'avsv' ? '<span class="fssep"></span><p class="small muted" style="margin:0">Tisch antippen: Arbeits- oder Sozialverhalten eintragen. Zahl = Einträge an diesem Tag. Nur Auffälliges, sonst gilt C.</p>' : ''}
       ${(() => { const L = activeList(c); return L ? `<span class="fssep"></span><p class="small" style="margin:0">📋 <b>${esc(L.title)}</b><br>${doneCount(c, L)} von ${c.students.length} erledigt. Tisch antippen hakt ab.</p>${side('listsel', '', 'Liste beenden', '✓')}` : ''; })()}
     </aside>`;
@@ -1876,19 +1886,29 @@ function notenHTML(c) {
 }
 
 // ---------- Fehlzeiten ----------
+// Reine Auswertung: erfasst wird im Modus Anwesenheit (Sitzplan oder Namen), auch für frühere Tage
 function fehlHTML(c) {
   if (!c.students.length) return needStudents(c);
-  const d = UI.attDate || today(), att = c.att[d] || {};
-  const n = { e: 0, u: 0, v: 0 }; c.students.forEach(s => { if (att[s.id]) n[att[s.id]]++; });
-  const tot = sid => { const r = { e: 0, u: 0, v: 0 }; Object.values(c.att).forEach(day => { if (day[sid]) r[day[sid]]++; }); return r; };
-  const sum = n.e + n.u + n.v ? `${n.e + n.u} fehlen${n.u ? ' (' + n.u + ' unentschuldigt)' : ''}${n.v ? ', ' + n.v + ' verspätet' : ''}` : 'alle anwesend';
-  return `<div class="spread"><h1>Anwesenheit</h1><span class="small muted">${esc(c.name)}</span></div>
-    <div class="row" style="margin-bottom:8px"><input class="in" type="date" value="${d}" data-c="attdate" style="flex:1;min-width:0;max-width:220px"><button class="btn sm" data-a="attall">Alle anwesend</button></div>
-    <p class="small" style="margin:0 0 10px"><b>${fmtDate(d)}:</b> ${sum}</p>
-    <div class="list attlist">${sorted(c).map(s => { const st = att[s.id] || 'a', ex = activeEx(s, d), t = tot(s.id);
-      return `<div class="attrow"><span class="an"><b>${esc(nameOf(s, c))}</b>${ex ? ' <span class="badge x">befreit</span>' : ''}${t.e + t.u + t.v ? ` <span class="small muted">gesamt E ${t.e} · <span class="${t.u ? 'bad' : ''}">U ${t.u}</span> · V ${t.v}</span>` : ''}<span class="mkrow">${markBtns(c, s.id, d, allMarkTypes(c))}</span></span>
-        <div class="att" role="group" aria-label="Status ${esc(nameOf(s, c))}">${[['a', 'da'], ['e', 'E'], ['u', 'U'], ['v', 'V']].map(([k, tx]) => `<button class="${k}" data-a="att" data-id="${s.id}" data-v="${k}" aria-pressed="${st === k}" title="${{ a: 'anwesend', e: 'fehlt entschuldigt', u: 'fehlt unentschuldigt', v: 'verspätet' }[k]}">${tx}</button>`).join('')}</div></div>`; }).join('')}</div>
-    <p class="muted small" style="margin-top:10px">da = anwesend, E = fehlt entschuldigt, U = fehlt unentschuldigt, V = verspätet; „gesamt“ = alle erfassten Tage. ${c.subject === 'sport' ? 'Vermerke: Vergessenes sowie „Verletzt“/„Erkrankt“ = anwesend, aber nicht aktiv. Längere Zeiträume mit Attest als Befreiung eintragen.' : 'Vergessen-Knöpfe markieren für das gewählte Datum, die Zahl ist die Summe (ab 3 rot).'}</p>`;
+  const tage = Object.keys(c.att).filter(d => Object.keys(c.att[d] || {}).length).sort().reverse();
+  const sum = sid => { const r = { e: 0, u: 0, v: 0, last: '' }; tage.forEach(d => { const st = c.att[d][sid]; if (st) { r[st]++; if (!r.last) r.last = d; } }); return r; };
+  const vt = markTypes(c), pt = partTypes(c);
+  const rows = sorted(c).map(s => ({ s, r: sum(s.id) }));
+  if (UI.fehlSort === 'fehl') rows.sort((x, y) => (y.r.e + y.r.u) - (x.r.e + x.r.u) || y.r.u - x.r.u || y.r.v - x.r.v);
+  const ges = rows.reduce((a, { r }) => ({ e: a.e + r.e, u: a.u + r.u, v: a.v + r.v }), { e: 0, u: 0, v: 0 });
+  const zahl = (n, cl) => n ? `<span class="${cl || ''}">${n}</span>` : '<span class="muted">–</span>';
+  const tagZeile = d => { const day = c.att[d], ns = sorted(c).filter(s => day[s.id]);
+    return `<button data-a="fehltag" data-v="${d}"><span><b>${fmtDate(d)}</b>${d === today() ? ' · heute' : ''}<br><span class="small muted">${ns.map(s => `${esc(nameOf(s, c))} (${day[s.id].toUpperCase()})`).join(', ')}</span></span><span class="small muted">bearbeiten ›</span></button>`; };
+  return `<div class="fehlz"><div class="spread"><h1>Fehlzeiten</h1><span class="row"><button class="btn primary sm" data-a="fehltag" data-v="${today()}">Anwesenheit heute erfassen</button>
+      <label class="small muted row" style="gap:6px">anderer Tag <input class="in" type="date" data-c="fehltagwahl" max="${today()}" style="width:auto"></label></span></div>
+    <p class="small" style="margin:0 0 10px">${tage.length ? `Insgesamt ${ges.e + ges.u} Fehltage (${ges.e} entschuldigt, <span class="${ges.u ? 'bad' : ''}">${ges.u} unentschuldigt</span>), ${ges.v}× verspätet.` : 'Noch keine Fehlzeiten erfasst.'}</p>
+    <div class="seg noprint" role="group" aria-label="Sortierung" style="margin-bottom:10px"><button data-a="fehlsort" data-v="" aria-pressed="${UI.fehlSort !== 'fehl'}">Nach Namen</button><button data-a="fehlsort" data-v="fehl" aria-pressed="${UI.fehlSort === 'fehl'}">Nach Fehltagen</button></div>
+    <div class="tw"><table class="t"><thead><tr><th>Name</th><th class="c" title="fehlt entschuldigt">E</th><th class="c" title="fehlt unentschuldigt">U</th><th class="c" title="verspätet">V</th>${[...vt, ...pt].map(t => `<th class="c" title="${MARK[t][1]}">${MARK[t][0]}</th>`).join('')}<th class="c">zuletzt gefehlt</th></tr></thead>
+    <tbody>${rows.map(({ s, r }) => `<tr class="click" data-a="student" data-id="${s.id}"><td><b>${esc(nameOf(s, c))}</b>${activeEx(s) ? ' <span class="badge x">befreit</span>' : ''}</td>
+      <td class="c num">${zahl(r.e)}</td><td class="c num">${zahl(r.u, 'bad')}</td><td class="c num">${zahl(r.v)}</td>
+      ${vt.map(t => `<td class="c num">${zahl(markCount(c, s.id, t), mkCls(markCount(c, s.id, t)))}</td>`).join('')}${pt.map(t => `<td class="c num">${markCount(c, s.id, t) ? esc(String(markExport(c, s.id, t))) : '<span class="muted">–</span>'}</td>`).join('')}
+      <td class="c small">${r.last ? fmtDate(r.last) : '<span class="muted">–</span>'}</td></tr>`).join('')}</tbody></table></div>
+    <p class="muted small" style="margin-top:8px">E = entschuldigt, U = unentschuldigt, V = verspätet. ${vt.map(t => `${MARK[t][0]} = ${MARK[t][1]}`).join(', ')}${pt.length ? ', ' + pt.map(t => `${MARK[t][0]} = ${MARK[t][1]}`).join(', ') : ''} (Summe im Halbjahr, ab 3 rot). Zeile antippen: Schülerkarte.</p>
+    ${tage.length ? `<h2>Tage mit Fehlzeiten</h2><div class="list">${tage.slice(0, UI.fehlMehr ? tage.length : 12).map(tagZeile).join('')}</div>${tage.length > 12 && !UI.fehlMehr ? `<button class="btn sm" data-a="fehlmehr" style="margin-top:8px">Alle ${tage.length} Tage</button>` : ''}` : ''}</div>`;
 }
 
 // ---------- Arbeiten ----------
@@ -1976,6 +1996,33 @@ function measureRow(c, s, disc, date, raw) {
   if (!f) return { msg: s.birthYear ? `keine Tabelle für ${s.gender}, ${age} J.` : 'Jahrgang fehlt' };
   if (val == null) return { msg: '', t: f.t };
   return { p: C.evalTable(f.t, f.c, val), t: f.t, col: f.t.cols[f.c] };
+}
+// ---------- Messwerte als Erfassungsmodus (Sport): Person antippen, Wert eingeben, Note aus der Leistungstabelle ----------
+const messHeute = (c, sid) => c.entries.find(e => e.sid === sid && e.disc && e.disc === UI.measureDisc && e.date === seatDay());
+function messWahlHTML(cl) {
+  const discs = discList(); if (!discs.length) return '<button class="btn sm" data-a="go" data-v="tables">Leistungstabelle anlegen</button>';
+  if (!discs.includes(UI.measureDisc)) UI.measureDisc = discs[0];
+  return `<select class="${cl}" data-c="mdisc" aria-label="Disziplin" style="width:auto;max-width:100%">${discs.map(d => `<option ${d === UI.measureDisc ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select>`;
+}
+const messKat = c => UI.mcat && c.cats.find(k => k.id === UI.mcat) ? UI.mcat : (c.cats.find(k => k.id === 'prax') || c.cats[0]).id;
+const messResHTML = (c, r) => r.p != null ? `Note: <span class="gl">${lab(r.p, c)}</span>` : `<span class="small" style="color:var(--warn)">${esc(r.msg || '')}</span>`;
+function messFormHTML(c, m) {
+  const s = stu(c, m.sid); if (!s) return '';
+  const discs = discList();
+  if (!discs.length) return sheet(esc(nameOf(s, c)), `<p>Für Messwerte brauchst du zuerst eine Leistungstabelle – per Foto, PDF oder von Hand.</p><button class="btn primary" data-a="go" data-v="tables">Leistungstabellen</button>`);
+  if (!discs.includes(UI.measureDisc)) UI.measureDisc = discs[0];
+  const disc = UI.measureDisc, d = seatDay(), t0 = S.tables.find(t => t.disc === disc), ex = activeEx(s, d);
+  const r = measureRow(c, s, disc, d, m.raw || '');
+  const bisher = c.entries.filter(e => e.sid === s.id && e.disc === disc).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+  return sheet(esc(nameOf(s, c)), `<div class="stack">
+    ${ex ? `<span class="badge x">befreit: ${esc(ex.kind)}</span>` : ''}
+    <div class="grid2"><div><label class="f">Disziplin</label>${messWahlHTML('in')}</div><div><label class="f">Datum</label><p style="margin:8px 0 0"><b>${d === today() ? 'Heute' : fmtDate(d)}</b></p></div></div>
+    <div><label class="f" for="messin">Messwert in ${unitName(t0.unit)}${t0.unit === 'min' ? ' (z. B. 4:05,2)' : ''}</label>
+      <input class="in" id="messin" data-c="messin" inputmode="decimal" enterkeyhint="next" autocomplete="off" value="${esc(m.raw || '')}"></div>
+    <div id="messres" style="min-height:24px">${messResHTML(c, r)}</div>
+    ${bisher.length ? `<p class="small muted" style="margin:0">Bisher: ${bisher.map(e => `${fmtDate(e.date)} ${esc(e.label.replace(/^[^:]*: /, ''))} → ${lab(e.p, c)}`).join(' · ')}</p>` : ''}
+    <div class="row"><button class="btn primary" data-a="messsave" data-next="1">Speichern, nächste Person</button><button class="btn" data-a="messsave">Speichern</button></div>
+    <p class="small muted" style="margin:0">Wird gespeichert als ${esc((c.cats.find(k => k.id === messKat(c)) || {}).name || '')}. Enter = speichern und weiter. Mehrere Werte auf einmal: Überblick → Sport.</p></div>`);
 }
 function messenHTML(c) {
   const discs = discList();
@@ -2338,6 +2385,7 @@ function modalHTML() {
     case 'rand': return randHTML(c, m);
     case 'listform': return listFormHTML(c, m);
     case 'listpick': return listPickHTML(c);
+    case 'mess': return messFormHTML(c, m);
     case 'gfoc': return sheet('Einzelansicht – Person wählen', `<p class="small muted" style="margin-top:0">Danach zeigt das Notenblatt nur noch diese Person. Mit ‹ › wechselst du zur nächsten, ohne die Liste zu zeigen.</p><div class="list">${sorted(c).map(s => `<button data-a="gfocset" data-id="${s.id}"><span><b>${esc(nameOf(s, c))}</b></span><span>›</span></button>`).join('')}</div>`);
     case 'topic': return topicFormHTML(c, m);
     case 'avsv': return avsvFormHTML(c, m);
@@ -2757,6 +2805,28 @@ const A = {
     if (!Object.keys(day).length) delete c.att[d];
     commit();
   },
+  // Fehlzeiten → Anwesenheit eines Tages im Modus erfassen/bearbeiten
+  fehltag: el => { const c = cls(), d = el.dataset.v || today(); if (!c) return; UI.seatDate = d === today() ? null : d; UI.modus = 'anw'; UI.view = 'erfassen'; UI.pick = null; UI.modal = null;
+    if (UI.listMode === 'sitz' && dev() !== 'phone') toggleNativeFull(true); render(); window.scrollTo(0, 0); },
+  fehlsort: el => { UI.fehlSort = el.dataset.v || ''; render(); },
+  fehlmehr: () => { UI.fehlMehr = true; render(); },
+  messsave: el => {
+    const c = cls(), m = UI.modal; if (!c || !m || m.type !== 'mess') return;
+    const s = stu(c, m.sid), disc = UI.measureDisc, d = seatDay(), raw = String(m.raw || '').trim();
+    if (!raw) return toast('Erst einen Messwert eingeben');
+    const r = measureRow(c, s, disc, d, raw); if (r.p == null) return toast(r.msg || 'Kein gültiger Messwert');
+    const e = { id: uid(), sid: s.id, cat: messKat(c), p: r.p, date: d, label: `${disc}: ${raw}${r.t.unit === 'min' ? '' : ' ' + r.t.unit}`, w: 1, raw: C.parseMeasure(raw), disc };
+    c.entries.push(e); LAST = { cls: c.id, eid: e.id };
+    let next = null;
+    if (el.dataset && el.dataset.next) {   // nächste anwesende, nicht befreite Person ohne Wert in dieser Disziplin an diesem Tag
+      const att = c.att[d] || {}, ok = x => att[x.id] !== 'e' && att[x.id] !== 'u' && !activeEx(x, d) && !c.entries.some(en => en.sid === x.id && en.disc === disc && en.date === d);
+      const list = sorted(c), i = list.findIndex(x => x.id === s.id);
+      next = list.slice(i + 1).find(ok) || null;
+    }
+    UI.modal = next ? { type: 'mess', sid: next.id, raw: '' } : null;
+    commit(); toast(`${s.first || s.last}: ${lab(r.p, c)} (${disc})`, true);
+    if (next) { const i = $('#messin'); if (i) i.focus(); }
+  },
   alleda: () => { const c = cls(); if (!c) return; anwMerken(c, seatDay()); UI.modus = 'noten'; UI.pick = null;
     LAST = { cls: c.id, fn: k => { anwVergessen(k); UI.modus = 'anw'; } }; render(); toast('Anwesenheit erfasst – weiter mit Mitarbeit', true); },
   attall: () => { const c = cls(), d = UI.attDate || today(), prev = c.att[d]; delete c.att[d]; anwMerken(c, d); commit(); if (prev) { LAST = { cls: c.id, fn: k => { k.att[d] = prev; } }; toast('Alle auf anwesend gesetzt', true); } },
@@ -3148,6 +3218,7 @@ function refreshExam(c, ex) {
 
 // Live-Eingaben ohne Neuzeichnen (Fokus bleibt erhalten)
 const INPUT = {
+  messin: el => { const m = UI.modal; if (!m || m.type !== 'mess') return; m.raw = el.value; const c = cls(), s = stu(c, m.sid), o = $('#messres'); if (o) o.innerHTML = messResHTML(c, measureRow(c, s, UI.measureDisc, seatDay(), el.value)); },
   avnote: el => { if (UI.modal) UI.modal.note = el.value; },
   tpin: el => { if (UI.modal && UI.modal.type === 'topic') UI.modal[el.id === 'tpdone' ? 'done' : 'plan'] = el.value; },
   srch: el => { UI.q = el.value; const r = $('#sres'); if (r) r.innerHTML = searchResults(); },
@@ -3176,6 +3247,7 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => { const el = e.target.closest('[data-c]'); if (el && CH[el.dataset.c]) Promise.resolve(CH[el.dataset.c](el, e)).catch(err => { console.error(err); toast('Fehler: ' + (err && err.message || err)); }); });
 document.addEventListener('input', e => { const el = e.target.closest('[data-c]'); if (el && INPUT[el.dataset.c]) INPUT[el.dataset.c](el, e); });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'messin') { e.preventDefault(); A.messsave({ dataset: { next: '1' } }); return; }
   if (e.key === 'Enter' && (e.target.id === 'pw' || e.target.id === 'pw2')) { e.preventDefault(); (e.target.id === 'pw' ? doUnlock : doSetup)(); }
   if (e.key === 'Enter' && e.target.dataset && e.target.dataset.bk) { e.preventDefault(); const all = [...document.querySelectorAll('[data-bk]')]; const nx = all[all.indexOf(e.target) + 1]; if (nx) nx.focus(); else e.target.blur(); }
   if (e.key === 'Enter' && e.target.dataset && (e.target.dataset.c === 'score' || e.target.dataset.c === 'meas')) {
@@ -3378,6 +3450,7 @@ Object.assign(A, {
       commit(); return toast(`${s.first || s.last}: ${nx ? { e: 'fehlt entschuldigt', u: 'fehlt unentschuldigt', v: 'verspätet' }[nx] : 'anwesend'}`, true);
     }
     if (UI.modus === 'avsv' && c.level === 'sek1') return openModal({ type: 'avsv', sid, date: seatDay(), k: UI.avk || 'av' });
+    if (UI.modus === 'mess' && c.subject === 'sport') { openModal({ type: 'mess', sid, raw: '' }); const i = $('#messin'); if (i) i.focus(); return; }
     if (UI.modus === 'verg') { const t = curMT(c), vorher = JSON.stringify(marksOf(c)), on = toggleMark(c, sid, seatDay(), t);
       LAST = { cls: c.id, fn: k => { k.marks = JSON.parse(vorher); } }; commit(); return toast(`${s.first || s.last}: ${markToast(t, on)}`, true); }
     openModal({ type: 'quick', sid, tend: '', date: seatDay() !== today() ? seatDay() : undefined, cat: mitCat(c) });
@@ -3480,7 +3553,7 @@ Object.assign(A, PICK_A, {
     toast(`${add.length} Noten am ${fmtDate(date)} gespeichert${us.unit ? ' (' + unitTitle(c, { unit: us.unit, sub: us.sub }) + ')' : ''}`, true);
   }
 });
-Object.assign(CH, { seatdate: el => { UI.seatDate = !el.value || el.value === today() ? null : el.value; render(); } });
+Object.assign(CH, { fehltagwahl: el => { if (el.value) A.fehltag({ dataset: { v: el.value } }); }, seatdate: el => { UI.seatDate = !el.value || el.value === today() ? null : el.value; render(); } });
 
 // ---------- Sechsertische: Aktionen und Ziehen ----------
 Object.assign(A, {
@@ -4046,16 +4119,18 @@ function studentDetailHTML(c, m) {
   const r = calc(c, s.id), ov = c.overrides[s.id] || {}, ex = activeEx(s);
   const n = { e: 0, u: 0, v: 0 }; Object.values(c.att).forEach(d => { if (d[s.id]) n[d[s.id]]++; });
   const opts = Array.from({ length: 16 }, (_, i) => 15 - i);
-  const box = (t, v, sub, cl) => `<div class="${cl || ''}"><span class="small muted">${t}</span><br><b class="num">${v}</b>${sub ? `<br><span class="small muted">${sub}</span>` : ''}</div>`;
+  // Kästen mit Filter: antippen zeigt rechts die passenden Einträge (z. B. alle Fehltage mit Datum)
+  const box = (t, v, sub, cl, f) => { const inh = `<span class="small muted">${t}</span><br><b class="num">${v}</b>${sub ? `<br><span class="small muted">${sub}</span>` : ''}`;
+    return f ? `<button class="sbox ${cl || ''}" data-a="tlf" data-v="${f}" aria-pressed="${UI.tlFilter === f}" title="Einträge anzeigen">${inh}</button>` : `<div class="${cl || ''}">${inh}</div>`; };
   const openLists = listsOf(c).filter(l => !l.archived && !(l.done || {})[s.id]);
   const units = usesUnits(c) ? unitsOf(c).filter(u => r.perUnit[u.id]) : [];
   const stats = [
     box('Zeugnis', r.final != null ? `<span class="gl ${r.over ? 'over' : ''}">${lab(r.final, c)}</span>` : '–', r.value != null ? `berechnet ${C.fmtAvg(r.value, c.level)}${r.over ? ', von dir festgelegt' : ''}` : 'noch keine Noten'),
     ...c.cats.map(k => box(esc(k.name) + ` <span class="small">(${k.w} %)</span>`, r.perCat[k.id] != null ? C.fmtAvg(r.perCat[k.id], c.level) : '–', `${r.ents.filter(e => e.cat === k.id).length} Noten`)),
     ...units.map(u => box(`${unitIcon(u)} ${esc(u.name)}`, C.fmtAvg(r.perUnit[u.id].value, c.level), esc(unitSubsText(c, u, r.perUnit[u.id])))),
-    box('Fehlzeiten', `${n.e + n.u}`, `${n.e} entsch., <span class="${n.u ? 'bad' : ''}">${n.u} unentsch.</span>, ${n.v} verspätet`, n.u ? 'warnbox' : ''),
-    box('Vergessen', `${markTypes(c).reduce((a, t) => a + markCount(c, s.id, t), 0)}`, markTypes(c).map(t => `<span class="${mkCls(markCount(c, s.id, t))}">${MARK[t][0]} ${markCount(c, s.id, t)}</span>`).join(' · ')),
-    ...(partTypes(c).length ? [box('Nicht aktiv', `${partTypes(c).reduce((a, t) => a + markCount(c, s.id, t), 0)}`, partTypes(c).map(t => `${MARK[t][2]} ${markExport(c, s.id, t)}`).join(' · '))] : []),
+    box('Fehlzeiten', `${n.e + n.u}`, `${n.e} entsch., <span class="${n.u ? 'bad' : ''}">${n.u} unentsch.</span>, ${n.v} verspätet`, n.u ? 'warnbox' : '', 'att'),
+    box('Vergessen', `${markTypes(c).reduce((a, t) => a + markCount(c, s.id, t), 0)}`, markTypes(c).map(t => `<span class="${mkCls(markCount(c, s.id, t))}">${MARK[t][0]} ${markCount(c, s.id, t)}</span>`).join(' · '), '', 'mark'),
+    ...(partTypes(c).length ? [box('Nicht aktiv', `${partTypes(c).reduce((a, t) => a + markCount(c, s.id, t), 0)}`, partTypes(c).map(t => `${MARK[t][2]} ${markExport(c, s.id, t)}`).join(' · '), '', 'att')] : []),
     ...(c.level === 'sek1' ? [box('AV / SV', `${avsvSummary(c, s.id, 'av').sugg} / ${avsvSummary(c, s.id, 'sv').sugg}`, 'Vorschlag')] : []),
     ...(listsOf(c).some(l => !l.archived) ? [box('Listen offen', `${openLists.length}`, openLists.slice(0, 3).map(l => esc(l.title)).join(', '))] : [])
   ].join('');

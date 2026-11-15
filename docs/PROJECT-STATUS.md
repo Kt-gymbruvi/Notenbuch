@@ -4,6 +4,13 @@ Stand: 14.11.2026 · **Etappe 1 (Umzug auf die Plattform) veröffentlicht** unte
 Migration `011_tresore.sql` ausgeführt (Tabelle vorhanden, ohne Anmeldung gesperrt). Die Lehrkraft hat ihre Daten aus dem
 Artefakt übernommen und den Abgleich zwischen zwei Geräten mit ihrem Konto erfolgreich geprüft (14.11.2026).
 
+## Neue Bedienung – Etappe 4: Fehlzeiten als Auswertung, Messwerte als Modus (gebaut 15.11.2026, nicht veröffentlicht)
+- **Fehlzeiten** ist reine Auswertung: Tabelle je Person mit E, U, V, Vergessen/Vermerken (Halbjahr, ab 3 rot) und letztem Fehltag, sortierbar nach Namen oder Fehltagen; Zeile → Schülerkarte. Darunter „Tage mit Fehlzeiten“ (antippen = diesen Tag im Modus Anwesenheit bearbeiten). Oben „Anwesenheit heute erfassen“ und „anderer Tag“. Erfasst wird nur noch im Modus Anwesenheit. Handy-Reiter heißt jetzt „Fehlzeiten“.
+- **Namensliste** hat eine Datumswahl (‹ Datum › Heute, vergangener Tag gelb) – wie der Sitzplan, für alle Modi.
+- **Schülerkarte:** Kästen Fehlzeiten, Vergessen und Nicht aktiv sind antippbar und filtern die Zeitleiste (alle Tage mit Datum).
+- **Messwerte (Sport)** als Erfassungsmodus: Disziplin rechts bzw. oben wählen, Person antippen → Fenster mit Messwert, Note live aus der Leistungstabelle, letzte Werte; „Speichern, nächste Person“ (Enter) springt zur nächsten anwesenden, nicht befreiten Person ohne Wert. Tische/Namen zeigen den heutigen Wert. Gespeichert wie bisher (Kategorie Praxis, Bemerkung „Disziplin: Wert“). Überblick „Sport“ (Tabelle für viele Werte, Befreiungen) bleibt.
+- Geprüft in der Vorschau mit Testdaten (Sport-Lerngruppe, Testtabelle 50 m): Messwert live, Enter speichert und springt weiter, Rückgängig, Kennzeichen am Tisch/Namen; Fehlzeiten-Auswertung, Tag bearbeiten, anderer Tag, rote U-Werte; Schülerkarte-Filter; Handy-Reiter und Modusleiste. **Nicht geprüft:** echtes iPad (Tastatur im Messwert-Fenster), dunkel.
+
 ## Neue Bedienung – Etappe 3: feste linke Spalte (gebaut 15.11.2026, nicht veröffentlicht)
 - iPad/PC in einer Klasse (Erfassen, Noten, Fehlzeiten, Arbeiten, Sport): nur noch die linke Spalte `klassenSpalteHTML` – Kopf (Lerngruppe wechseln) · Unterricht (Lehrstoff, Zufall, Liste mit Zähler) · Erfassen (Anwesenheit, Mitarbeit, AV/SV, Vergessen/Vermerke, Note für Gruppe) · Überblick (Noten, Fehlzeiten, Arbeiten, Sport) · Sync-Anzeige, Stundenplan, Mehr. Keine Kopfzeile, keine Navigation; Sitzplan auf iPad und PC gleich.
 - Ein Modus aus Noten usw. springt zurück zur Erfassung (Sitzplan oder Namen wie zuletzt).
