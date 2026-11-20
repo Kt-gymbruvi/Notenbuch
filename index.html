@@ -17,11 +17,11 @@ try { const w = localStorage.getItem('lehrraum-design'); if (w === 'hell' || w =
 /* Gestaltung wie die Tafel: ruhig und hell wie ein Werkzeug von Apple. Helle Flächen, Leisten als Glas,
    Dunkelblau ist die Farbe des Gewählten (dunkler Modus: Türkis), Türkis der Fokus. Gelb nur noch für Hinweise. */
 :root{
-  --navy:#0a2d53; --navy-2:#14407a; --yellow:#F2B92E; --yellow-ink:#3A2C00;
-  --bg:#eef2f7; --surface:#FFFFFF; --surface-2:#e9eef5; --ink:#0a2d53; --muted:#5a6b85; --line:#dce3ed;
+  --navy:#0f5c47; --navy-2:#16745a; --yellow:#ff8a14; --yellow-ink:#2b1500;
+  --bg:#f3f6f2; --surface:#FFFFFF; --surface-2:#e8efeb; --ink:#0c3d31; --muted:#5b6f68; --line:#d9e4de;
   --ok:#2d7a4f; --warn:#a8650f; --bad:#c4291f; --e:#1d4fc4;
-  --wahl:#0a2d53; --wahl-ink:#FFFFFF; --fokus:#0f7f6c; --tuerkis:#2cb69c;
-  --glas:rgb(255 255 255 / .78); --schatten:0 1px 2px rgb(10 45 83 / .06), 0 8px 28px rgb(10 45 83 / .10);
+  --wahl:#0f5c47; --wahl-ink:#FFFFFF; --fokus:#d96d00; --tuerkis:#ff8a14;
+  --glas:rgb(255 255 255 / .78); --schatten:0 1px 2px rgb(15 92 71 / .06), 0 8px 28px rgb(15 92 71 / .10);
   --head-bg:var(--glas); --head-ink:var(--ink);
   --r:12px; --r-lg:18px;
   color-scheme:light;
@@ -30,18 +30,18 @@ try { const w = localStorage.getItem('lehrraum-design'); if (w === 'hell' || w =
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-design="hell"]){
-    --bg:#061a33; --surface:#10294a; --surface-2:#163a69; --ink:#FFFFFF; --muted:#b9c7dc; --line:#23446f;
+    --bg:#07241c; --surface:#0d3329; --surface-2:#144536; --ink:#FFFFFF; --muted:#b6d3c7; --line:#215545;
     --ok:#6fd3a0; --warn:#f0b35a; --bad:#ffb4ab; --e:#8fb4ff; --navy-2:#2A4A80;
-    --wahl:#2cb69c; --wahl-ink:#06241f; --fokus:#6fd3bf;
-    --glas:rgb(16 41 74 / .92); --schatten:0 1px 2px rgb(0 0 0 / .3), 0 8px 28px rgb(0 0 0 / .35);
+    --wahl:#ff8a14; --wahl-ink:#2b1500; --fokus:#ffb067;
+    --glas:rgb(13 51 41 / .92); --schatten:0 1px 2px rgb(0 0 0 / .3), 0 8px 28px rgb(0 0 0 / .35);
     color-scheme:dark;
   }
 }
 :root[data-design="dunkel"]{
-  --bg:#061a33; --surface:#10294a; --surface-2:#163a69; --ink:#FFFFFF; --muted:#b9c7dc; --line:#23446f;
+  --bg:#07241c; --surface:#0d3329; --surface-2:#144536; --ink:#FFFFFF; --muted:#b6d3c7; --line:#215545;
   --ok:#6fd3a0; --warn:#f0b35a; --bad:#ffb4ab; --e:#8fb4ff; --navy-2:#2A4A80;
-  --wahl:#2cb69c; --wahl-ink:#06241f; --fokus:#6fd3bf;
-  --glas:rgb(16 41 74 / .92); --schatten:0 1px 2px rgb(0 0 0 / .3), 0 8px 28px rgb(0 0 0 / .35);
+  --wahl:#ff8a14; --wahl-ink:#2b1500; --fokus:#ffb067;
+  --glas:rgb(13 51 41 / .92); --schatten:0 1px 2px rgb(0 0 0 / .3), 0 8px 28px rgb(0 0 0 / .35);
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -102,7 +102,7 @@ p{margin:0 0 10px}
 .btn.ghost{background:transparent}
 .btn.sm{min-height:36px;padding:6px 12px;font-size:15px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;box-shadow:0 1px 2px rgb(10 45 83 / .04)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;box-shadow:0 1px 2px rgb(15 92 71 / .04)}
 .stack>*+*{margin-top:12px}
 label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin-bottom:4px}
 .in{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:10px 12px;min-height:44px}
@@ -499,7 +499,7 @@ body[data-dev="pc"] .tile:hover,body[data-dev="pc"] .list button:hover{backgroun
 @media (max-height:900px){.ksb{min-height:32px;padding-top:4px;padding-bottom:4px}.ksg{margin:5px 6px 1px}.kshinweis{padding:6px 8px;margin:4px 0}}
 .badge svg,.lbadge svg{width:12px;height:12px;vertical-align:-2px;margin-right:2px}
 .werkzeuge{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:0 0 12px}
-.wz{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;border-radius:14px;background:var(--surface);color:var(--ink);padding:9px 4px 7px;font-size:12.5px;font-weight:600;box-shadow:0 1px 2px rgb(10 45 83 / .06)}
+.wz{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;border-radius:14px;background:var(--surface);color:var(--ink);padding:9px 4px 7px;font-size:12.5px;font-weight:600;box-shadow:0 1px 2px rgb(15 92 71 / .06)}
 .wz svg{width:22px;height:22px}
 .wz[aria-pressed="true"]{background:var(--wahl);color:var(--wahl-ink)}
 .wz em{position:absolute;top:4px;right:6px;font-style:normal;font-size:10.5px;font-weight:700;color:var(--muted)}
